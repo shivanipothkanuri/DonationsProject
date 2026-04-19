@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Campaigns — CharityAid</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+</head>
+<body class="bg-light">
+<nav id="mainNav"></nav>
+<div class="container py-4">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h4 class="fw-bold mb-0">📢 Campaigns</h4>
+    <button id="btnNewCampaign" class="btn btn-success d-none" onclick="openCreateModal()">+ New Campaign</button>
+  </div>
+  <!-- Filter bar -->
+  <div class="mb-3">
+    <div class="btn-group" role="group">
+      <button type="button" class="btn btn-outline-success active" onclick="loadCampaigns('active',this)">Active</button>
+      <button type="button" class="btn btn-outline-secondary" id="btnAllCampaigns" onclick="loadCampaigns('all',this)">All</button>
+    </div>
+  </div>
+  <div id="campaignList" class="row g-3"></div>
+</div>
+
+<!-- Create/Edit Campaign Modal -->
+<div class="modal fade" id="campaignModal" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header bg-success text-white">
+        <h5 class="modal-title" id="modalTitle">New Campaign</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <form id="campaignForm">
+          <input type="hidden" id="campaignId">
+          <div class="row g-3">
+            <div class="col-12">
+              <label class="form-label">Campaign Title *</label>
+              <input type="text" class="form-control" id="fTitle" required maxlength="150">
+            </div>
+            <div class="col-12">
+              <label class="form-label">Description *</label>
+              <textarea class="form-control" id="fDesc" rows="3" required></textarea>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Goal Amount (USD) *</label>
+              <input type="number" class="form-control" id="fGoal" required min="1" step="0.01">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Category</label>
+              <select class="form-select" id="fCategory">
+                <option value="">-- Select --</option>
+                <option>HEALTH</option><option>EDUCATION</option>
+                <option>EMERGENCY</option><option>FOOD</option><option>GENERAL</option>
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Start Date *</label>
+              <input type="date" class="form-control" id="fStart" required>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">End Date *</label>
+              <input type="date" class="form-control" id="fEnd" required>
+            </div>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button class="btn btn-success" onclick="saveCampaign()">Save Campaign</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Donate Modal -->
+<div class="modal fade" id="donateModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header bg-primary text-white">
+        <h5 class="modal-title">💳 Make a Donation</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="donateCampaignId">
+        <p class="fw-bold" id="donateCampaignTitle"></p>
+        <div class="mb-3">
+          <label class="form-label">Donation Type *</label>
+          <select class="form-select" id="donateType" onchange="toggleDonateFields()">
+            <option value="MONETARY">Monetary</option>
+            <option value="IN_KIND">In-Kind (Goods)</option>
+          </select>
+        </div>
+        <div id="monetaryFields">
+          <div class="mb-3">
+            <label class="form-label">Amount (USD) *</label>
+            <input type="number" class="form-control" id="donateAmount" min="0.01" step="0.01">
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Payment Method</label>
+            <select class="form-select" id="donatePayment">
+              <option value="CREDIT_CARD">Credit Card</option>
+              <option value="DEBIT_CARD">Debit Card</option>
+              <option value="BANK_TRANSFER">Bank Transfer</option>
+            </select>
+          </div>
+        </div>
+        <div id="inKindFields" class="d-none">
+          <div class="mb-3">
+            <label class="form-label">Item to Donate *</label>
+            <select class="form-select" id="donateItem">
+              <option value="">Loading available items...</option>
+            </select>
+            <div class="form-text">Only inventory-listed items can be selected for in-kind donations.</div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Quantity *</label>
+            <input type="number" class="form-control" id="donateItemQty" min="1" step="1" placeholder="e.g. 10">
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button class="btn btn-primary" onclick="submitDonation()">Submit Donation</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="toast-container" class="position-fixed bottom-0 end-0 p-3" style="z-index:9999"></div>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="/js/auth.js"></script>
+<script>
+  requireAuth();
+  buildNav('mainNav');
+  const role = getRole();
+  const canManage = ['STAFF','ADMINISTRATOR'].includes(role);
+  if (canManage) {
+    document.getElementById('btnNewCampaign').classList.remove('d-none');
+    document.getElementById('btnAllCampaigns').classList.remove('d-none');
+  }
+
+  async function loadCampaigns(type, btn) {
+    document.querySelectorAll('.btn-group .btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    try {
+      const path = type === 'active' ? '/campaigns/active' : '/campaigns';
+      const res = await api('GET', path + '?size=50');
+      renderCampaigns(res.data.content || []);
+    } catch(e) { showError(e.message); }
+  }
+
+  function renderCampaigns(list) {
+    if (!list.length) {
+      document.getElementById('campaignList').innerHTML = '<p class="text-muted">No campaigns found.</p>';
+      return;
+    }
+    window._campaignMap = {};
+    list.forEach(c => { window._campaignMap[c.campaignId] = c; });
+
+    document.getElementById('campaignList').innerHTML = list.map(c => {
+      const pct = Math.min(100, Math.round(c.progressPercent));
+      const statusBadge = { ACTIVE: 'success', COMPLETED: 'primary', CLOSED: 'secondary' }[c.campaignStatus] || 'secondary';
+      const isDonor = role === 'DONOR';
+      const canDonate = isDonor && c.campaignStatus === 'ACTIVE';
+      const actions = canManage ? `
+        <button class="btn btn-sm btn-outline-warning" onclick="openEditModal(${c.campaignId})">Edit</button>
+        ${c.campaignStatus==='ACTIVE' ? `<button class="btn btn-sm btn-outline-danger" onclick="closeCampaign(${c.campaignId})">Close</button>` : ''}
+      ` : '';
+      return `
+      <div class="col-md-4">
+        <div class="card border-0 shadow-sm h-100">
+          <div class="card-body">
+            <div class="d-flex justify-content-between mb-1">
+              <span class="badge bg-${statusBadge}">${c.campaignStatus}</span>
+              ${c.category ? `<span class="badge bg-light text-dark">${c.category}</span>` : ''}
+            </div>
+            <h6 class="fw-bold mt-2">${c.campaignTitle}</h6>
+            <p class="text-muted small">${c.description.substring(0,120)}${c.description.length>120?'…':''}</p>
+            <div class="progress mb-2" style="height:8px">
+              <div class="progress-bar bg-success" style="width:${pct}%"></div>
+            </div>
+            <div class="d-flex justify-content-between small text-muted">
+              <span>$${(+c.collectedAmount).toLocaleString()} raised</span>
+              <span>${pct}% of $${(+c.goalAmount).toLocaleString()}</span>
+            </div>
+            <div class="small text-muted mt-1">📅 ${c.endDate}</div>
+          </div>
+          <div class="card-footer bg-transparent border-0 d-flex gap-2">
+            ${canDonate ? `<button class="btn btn-sm btn-primary flex-grow-1" onclick="openDonateModal(${c.campaignId})">Donate</button>` : ''}
+            ${actions}
+          </div>
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  function openCreateModal() {
+    document.getElementById('campaignId').value = '';
+    document.getElementById('modalTitle').textContent = 'New Campaign';
+    document.getElementById('campaignForm').reset();
+    new bootstrap.Modal(document.getElementById('campaignModal')).show();
+  }
+
+  function openEditModal(id) {
+    const c = window._campaignMap && window._campaignMap[id];
+    if (!c) return;
+    document.getElementById('campaignId').value = c.campaignId;
+    document.getElementById('modalTitle').textContent = 'Edit Campaign';
+    document.getElementById('fTitle').value = c.campaignTitle;
+    document.getElementById('fDesc').value = c.description;
+    document.getElementById('fGoal').value = c.goalAmount;
+    document.getElementById('fCategory').value = c.category || '';
+    document.getElementById('fStart').value = c.startDate;
+    document.getElementById('fEnd').value = c.endDate;
+    new bootstrap.Modal(document.getElementById('campaignModal')).show();
+  }
+
+  async function saveCampaign() {
+    const id = document.getElementById('campaignId').value;
+    const body = {
+      campaignTitle: document.getElementById('fTitle').value,
+      description: document.getElementById('fDesc').value,
+      goalAmount: parseFloat(document.getElementById('fGoal').value),
+      category: document.getElementById('fCategory').value || null,
+      startDate: document.getElementById('fStart').value,
+      endDate: document.getElementById('fEnd').value
+    };
+    try {
+      if (id) await api('PUT', `/campaigns/${id}`, body);
+      else     await api('POST', '/campaigns', body);
+      bootstrap.Modal.getInstance(document.getElementById('campaignModal')).hide();
+      showSuccess('Campaign saved!');
+      loadCampaigns('all', document.querySelector('.btn-group .btn:nth-child(2)'));
+    } catch(e) { showError(e.message); }
+  }
+
+  async function closeCampaign(id) {
+    if (!confirm('Close this campaign? No more donations will be accepted.')) return;
+    try {
+      await api('PATCH', `/campaigns/${id}/close`);
+      showSuccess('Campaign closed');
+      loadCampaigns('all', document.querySelector('.btn-group .btn:nth-child(2)'));
+    } catch(e) { showError(e.message); }
+  }
+
+  function openDonateModal(campaignId) {
+    const c = window._campaignMap && window._campaignMap[campaignId];
+    document.getElementById('donateCampaignId').value = campaignId;
+    document.getElementById('donateCampaignTitle').textContent = c ? c.campaignTitle : '';
+    document.getElementById('donateType').value = 'MONETARY';
+    document.getElementById('donateAmount').value = '';
+    document.getElementById('donateItemQty').value = '';
+    loadInKindOptions();
+    toggleDonateFields();
+    new bootstrap.Modal(document.getElementById('donateModal')).show();
+  }
+
+  async function loadInKindOptions() {
+    const select = document.getElementById('donateItem');
+    select.innerHTML = '<option value="">Loading available items...</option>';
+    try {
+      const res = await api('GET', '/donations/in-kind-options');
+      const options = res.data || [];
+      if (!options.length) {
+        select.innerHTML = '<option value="">No inventory items available</option>';
+        return;
+      }
+      select.innerHTML = '<option value="">Select item</option>' +
+        options.map(item => `<option value="${item}">${item}</option>`).join('');
+    } catch (e) {
+      select.innerHTML = '<option value="">Unable to load items</option>';
+      showError('Could not load in-kind item options.');
+    }
+  }
+
+  function toggleDonateFields() {
+    const type = document.getElementById('donateType').value;
+    document.getElementById('monetaryFields').classList.toggle('d-none', type !== 'MONETARY');
+    document.getElementById('inKindFields').classList.toggle('d-none', type !== 'IN_KIND');
+  }
+
+  async function submitDonation() {
+    const type = document.getElementById('donateType').value;
+    const selectedItem = document.getElementById('donateItem').value;
+    const selectedQty = parseInt(document.getElementById('donateItemQty').value, 10);
+
+    if (type === 'IN_KIND' && !selectedItem) {
+      showError('Please select an item for in-kind donation.');
+      return;
+    }
+
+    if (type === 'IN_KIND' && (!selectedQty || selectedQty < 1)) {
+      showError('Please enter a valid quantity for in-kind donation.');
+      return;
+    }
+
+    const body = {
+      campaignId: parseInt(document.getElementById('donateCampaignId').value),
+      donationType: type,
+      donationAmount: type === 'MONETARY' ? parseFloat(document.getElementById('donateAmount').value) : null,
+      itemDescription: type === 'IN_KIND' ? selectedItem : null,
+      itemQuantity: type === 'IN_KIND' ? selectedQty : null,
+      paymentMethod: type === 'MONETARY' ? document.getElementById('donatePayment').value : 'NA'
+    };
+    try {
+      const res = await api('POST', '/donations', body);
+      bootstrap.Modal.getInstance(document.getElementById('donateModal')).hide();
+      showSuccess(`Donation recorded! Transaction ID: ${res.data.transactionId}`);
+      loadCampaigns('active', document.querySelector('.btn-group .btn:first-child'));
+    } catch(e) { showError(e.message); }
+  }
+
+  // Initial load
+  loadCampaigns('active', document.querySelector('.btn-group .btn:first-child'));
+</script>
+</body>
+</html>

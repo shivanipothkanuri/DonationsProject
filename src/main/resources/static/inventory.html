@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Inventory — CharityAid</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+</head>
+<body class="bg-light">
+<nav id="mainNav"></nav>
+<div class="container py-4">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h4 class="fw-bold mb-0">📦 Inventory</h4>
+    <div class="d-flex gap-2">
+      <button class="btn btn-outline-danger" onclick="loadLowStock()">⚠️ Low Stock</button>
+      <button class="btn btn-success" onclick="openModal()">+ Add Item</button>
+    </div>
+  </div>
+  <!-- Table -->
+  <div class="card border-0 shadow-sm">
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-hover mb-0">
+          <thead class="table-secondary">
+            <tr><th>ID</th><th>Item Name</th><th>Category</th><th>Qty on Hand</th><th>Threshold</th><th>Unit</th><th>Expiry</th><th>Updated</th><th>Actions</th></tr>
+          </thead>
+          <tbody id="invRows"><tr><td colspan="9" class="text-center text-muted p-4">Loading…</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  <div id="pagination" class="mt-3 d-flex justify-content-center"></div>
+</div>
+
+<!-- Add/Edit Modal -->
+<div class="modal fade" id="invModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header bg-secondary text-white">
+        <h5 class="modal-title" id="invModalTitle">Add Inventory Item</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="invId">
+        <div class="row g-3">
+          <div class="col-12">
+            <label class="form-label">Item Name *</label>
+            <input type="text" class="form-control" id="iName" required maxlength="150">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Category *</label>
+            <select class="form-select" id="iCategory">
+              <option>FOOD</option><option>CLOTHING</option>
+              <option>MEDICAL</option><option>SUPPLIES</option><option>OTHER</option>
+            </select>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Unit of Measure *</label>
+            <select class="form-select" id="iUnit">
+              <option>UNITS</option><option>KG</option>
+              <option>LITERS</option><option>BOXES</option><option>BAGS</option>
+            </select>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Quantity on Hand *</label>
+            <input type="number" class="form-control" id="iQty" required min="0">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Low Stock Threshold *</label>
+            <input type="number" class="form-control" id="iThreshold" required min="0">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Expiry Date <small class="text-muted">(optional)</small></label>
+            <input type="date" class="form-control" id="iExpiry">
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button class="btn btn-success" onclick="saveItem()">Save</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="toast-container" class="position-fixed bottom-0 end-0 p-3" style="z-index:9999"></div>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="/js/auth.js"></script>
+<script>
+  requireAuth();
+  if (!['STAFF','ADMINISTRATOR'].includes(getRole())) window.location.href = '/dashboard.html';
+  buildNav('mainNav');
+
+  async function loadInventory(page = 0) {
+    try {
+      const res = await api('GET', `/inventory?page=${page}&size=20`);
+      renderTable(res.data.content || []);
+      renderPagination(res.data.totalPages, page);
+    } catch(e) { showError(e.message); }
+  }
+
+  async function loadLowStock() {
+    try {
+      const res = await api('GET', '/inventory/low-stock');
+      renderTable(res.data || []);
+      document.getElementById('pagination').innerHTML = '';
+      showError(`⚠️ ${res.data.length} low-stock item(s) found`);
+    } catch(e) { showError(e.message); }
+  }
+
+  function renderTable(rows) {
+    if (!rows.length) {
+      document.getElementById('invRows').innerHTML = '<tr><td colspan="9" class="text-center text-muted p-4">No items found.</td></tr>';
+      return;
+    }
+    window._inventoryMap = {};
+    rows.forEach(i => { window._inventoryMap[i.itemId] = i; });
+    const isAdmin = getRole() === 'ADMINISTRATOR';
+    document.getElementById('invRows').innerHTML = rows.map(i => `
+      <tr class="${i.lowStock ? 'table-danger' : ''}">
+        <td>${i.itemId}</td>
+        <td class="fw-semibold">${i.itemName} ${i.lowStock ? '⚠️' : ''}</td>
+        <td>${i.itemCategory}</td>
+        <td>${i.quantityOnHand}</td>
+        <td>${i.lowThreshold}</td>
+        <td>${i.unitOfMeasure}</td>
+        <td>${i.expiryDate || '—'}</td>
+        <td>${new Date(i.lastUpdated).toLocaleDateString()}</td>
+        <td class="d-flex gap-1">
+          <button class="btn btn-sm btn-outline-primary" onclick="editItem(${i.itemId})">Edit</button>
+          ${isAdmin ? `<button class="btn btn-sm btn-outline-danger" onclick="deleteItem(${i.itemId})">Delete</button>` : ''}
+        </td>
+      </tr>`).join('');
+  }
+
+  function renderPagination(total, current) {
+    if (total <= 1) { document.getElementById('pagination').innerHTML = ''; return; }
+    let html = '<nav><ul class="pagination">';
+    for (let i = 0; i < total; i++)
+      html += `<li class="page-item${i===current?' active':''}"><button class="page-link" onclick="loadInventory(${i})">${i+1}</button></li>`;
+    document.getElementById('pagination').innerHTML = html + '</ul></nav>';
+  }
+
+  function openModal() {
+    document.getElementById('invId').value = '';
+    document.getElementById('invModalTitle').textContent = 'Add Inventory Item';
+    document.getElementById('iName').value = '';
+    document.getElementById('iCategory').value = 'FOOD';
+    document.getElementById('iUnit').value = 'UNITS';
+    document.getElementById('iQty').value = '';
+    document.getElementById('iThreshold').value = '';
+    document.getElementById('iExpiry').value = '';
+    new bootstrap.Modal(document.getElementById('invModal')).show();
+  }
+
+  function editItem(id) {
+    const i = window._inventoryMap && window._inventoryMap[id];
+    if (!i) return;
+    document.getElementById('invId').value = i.itemId;
+    document.getElementById('invModalTitle').textContent = 'Edit Item';
+    document.getElementById('iName').value = i.itemName;
+    document.getElementById('iCategory').value = i.itemCategory;
+    document.getElementById('iUnit').value = i.unitOfMeasure;
+    document.getElementById('iQty').value = i.quantityOnHand;
+    document.getElementById('iThreshold').value = i.lowThreshold;
+    document.getElementById('iExpiry').value = i.expiryDate || '';
+    new bootstrap.Modal(document.getElementById('invModal')).show();
+  }
+
+  async function saveItem() {
+    const id = document.getElementById('invId').value;
+    const body = {
+      itemName: document.getElementById('iName').value,
+      itemCategory: document.getElementById('iCategory').value,
+      unitOfMeasure: document.getElementById('iUnit').value,
+      quantityOnHand: parseInt(document.getElementById('iQty').value),
+      lowThreshold: parseInt(document.getElementById('iThreshold').value),
+      expiryDate: document.getElementById('iExpiry').value || null
+    };
+    try {
+      if (id) await api('PUT', `/inventory/${id}`, body);
+      else    await api('POST', '/inventory', body);
+      bootstrap.Modal.getInstance(document.getElementById('invModal')).hide();
+      showSuccess('Item saved!');
+      loadInventory();
+    } catch(e) { showError(e.message); }
+  }
+
+  async function deleteItem(id) {
+    if (!confirm('Delete this inventory item?')) return;
+    try {
+      await api('DELETE', `/inventory/${id}`);
+      showSuccess('Item deleted');
+      loadInventory();
+    } catch(e) { showError(e.message); }
+  }
+
+  loadInventory();
+</script>
+</body>
+</html>

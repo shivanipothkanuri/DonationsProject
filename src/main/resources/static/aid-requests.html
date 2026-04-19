@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Aid Requests — CharityAid</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+</head>
+<body class="bg-light">
+<nav id="mainNav"></nav>
+<div class="container py-4">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h4 class="fw-bold mb-0">📋 Aid Requests</h4>
+    <button id="btnNew" class="btn btn-success d-none" onclick="openNewModal()">+ Submit Request</button>
+  </div>
+  <!-- Status filter -->
+  <div class="btn-group mb-3" role="group">
+    <button class="btn btn-outline-secondary active" onclick="filterStatus('', this)">All</button>
+    <button class="btn btn-outline-warning" onclick="filterStatus('PENDING', this)">Pending</button>
+    <button class="btn btn-outline-success" onclick="filterStatus('APPROVED', this)">Approved</button>
+    <button class="btn btn-outline-danger" onclick="filterStatus('DENIED', this)">Denied</button>
+    <button class="btn btn-outline-primary" onclick="filterStatus('FULFILLED', this)">Fulfilled</button>
+  </div>
+  <!-- Table -->
+  <div class="card border-0 shadow-sm">
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-hover mb-0">
+          <thead class="table-warning">
+            <tr><th>ID</th><th>Beneficiary</th><th>Aid Type</th><th>Requested</th><th>Status</th><th>Submitted</th><th>Actions</th></tr>
+          </thead>
+          <tbody id="arRows"><tr><td colspan="7" class="text-center text-muted p-4">Loading…</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  <div id="pagination" class="mt-3 d-flex justify-content-center"></div>
+</div>
+
+<!-- New Request Modal -->
+<div class="modal fade" id="newModal" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header bg-success text-white">
+        <h5 class="modal-title">Submit Aid Request</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="row g-3">
+          <div class="col-md-6">
+            <label class="form-label">Beneficiary ID *</label>
+            <input type="number" class="form-control" id="nBenId" required>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Aid Type *</label>
+            <select class="form-select" id="nAidType" onchange="toggleAmountField()">
+              <option value="MONETARY">Monetary</option>
+              <option value="FOOD">Food</option>
+              <option value="SUPPLIES">Supplies</option>
+              <option value="MEDICAL">Medical</option>
+              <option value="OTHER">Other</option>
+            </select>
+          </div>
+          <div class="col-12">
+            <label class="form-label">Description *</label>
+            <textarea class="form-control" id="nDesc" rows="3" required></textarea>
+          </div>
+          <div class="col-md-6" id="amountField">
+            <label class="form-label">Requested Amount (USD)</label>
+            <input type="number" class="form-control" id="nAmount" min="0.01" step="0.01">
+          </div>
+          <div class="col-md-6 d-none" id="itemField">
+            <label class="form-label">Requested Item</label>
+            <input type="text" class="form-control" id="nItem" placeholder="e.g. Rice, 10 bags">
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button class="btn btn-success" onclick="submitRequest()">Submit</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Detail / Deny Modal -->
+<div class="modal fade" id="detailModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header bg-warning text-dark">
+        <h5 class="modal-title" id="detailTitle">Request Detail</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body" id="detailBody"></div>
+      <div class="modal-footer" id="detailActions"></div>
+    </div>
+  </div>
+</div>
+
+<div id="toast-container" class="position-fixed bottom-0 end-0 p-3" style="z-index:9999"></div>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="/js/auth.js"></script>
+<script>
+  requireAuth();
+  const allowedRoles = ['STAFF','CASE_MANAGER','ADMINISTRATOR'];
+  if (!allowedRoles.includes(getRole())) window.location.href = '/dashboard.html';
+  buildNav('mainNav');
+
+  const role = getRole();
+  if (['STAFF','ADMINISTRATOR'].includes(role)) document.getElementById('btnNew').classList.remove('d-none');
+
+  let currentStatus = '';
+
+  function filterStatus(status, btn) {
+    document.querySelectorAll('.btn-group .btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    currentStatus = status;
+    loadRequests(0);
+  }
+
+  async function loadRequests(page = 0) {
+    let url = `/aid-requests?page=${page}&size=15`;
+    if (currentStatus) url += `&status=${currentStatus}`;
+    try {
+      const res = await api('GET', url);
+      renderTable(res.data.content || []);
+      renderPagination(res.data.totalPages, page);
+    } catch(e) { showError(e.message); }
+  }
+
+  const statusColors = { PENDING:'warning', APPROVED:'success', DENIED:'danger', FULFILLED:'primary' };
+
+  function renderTable(rows) {
+    if (!rows.length) {
+      document.getElementById('arRows').innerHTML = '<tr><td colspan="7" class="text-center text-muted p-4">No requests found.</td></tr>';
+      return;
+    }
+    document.getElementById('arRows').innerHTML = rows.map(r => `
+      <tr>
+        <td>${r.requestId}</td>
+        <td class="fw-semibold">${r.beneficiaryName}</td>
+        <td>${r.aidType}</td>
+        <td>${r.requestedAmount ? '$'+Number(r.requestedAmount).toFixed(2) : r.requestedItem || '—'}</td>
+        <td><span class="badge bg-${statusColors[r.requestStatus]||'secondary'}">${r.requestStatus}</span></td>
+        <td>${new Date(r.submissionDate).toLocaleDateString()}</td>
+        <td class="d-flex gap-1 flex-wrap">
+          <button class="btn btn-sm btn-outline-secondary" onclick='showDetail(${JSON.stringify(r).replace(/'/g,"\\'")} )'>View</button>
+          ${r.requestStatus==='PENDING' && ['CASE_MANAGER','ADMINISTRATOR'].includes(role) ? `
+            <button class="btn btn-sm btn-success" onclick="approve(${r.requestId})">Approve</button>
+            <button class="btn btn-sm btn-danger" onclick="openDeny(${r.requestId})">Deny</button>` : ''}
+          ${r.requestStatus==='APPROVED' && ['STAFF','ADMINISTRATOR'].includes(role) ? `
+            <button class="btn btn-sm btn-primary" onclick="fulfill(${r.requestId})">Fulfill</button>` : ''}
+        </td>
+      </tr>`).join('');
+  }
+
+  function renderPagination(total, current) {
+    if (total <= 1) { document.getElementById('pagination').innerHTML = ''; return; }
+    let html = '<nav><ul class="pagination">';
+    for (let i = 0; i < total; i++)
+      html += `<li class="page-item${i===current?' active':''}"><button class="page-link" onclick="loadRequests(${i})">${i+1}</button></li>`;
+    document.getElementById('pagination').innerHTML = html + '</ul></nav>';
+  }
+
+  function showDetail(r) {
+    document.getElementById('detailTitle').textContent = `Request #${r.requestId} — ${r.beneficiaryName}`;
+    document.getElementById('detailBody').innerHTML = `
+      <dl class="row mb-0">
+        <dt class="col-5">Aid Type</dt><dd class="col-7">${r.aidType}</dd>
+        <dt class="col-5">Status</dt><dd class="col-7"><span class="badge bg-${statusColors[r.requestStatus]}">${r.requestStatus}</span></dd>
+        <dt class="col-5">Description</dt><dd class="col-7">${r.description}</dd>
+        <dt class="col-5">Amount</dt><dd class="col-7">${r.requestedAmount ? '$'+r.requestedAmount : '—'}</dd>
+        <dt class="col-5">Item</dt><dd class="col-7">${r.requestedItem || '—'}</dd>
+        <dt class="col-5">Submitted By</dt><dd class="col-7">${r.submittedByName}</dd>
+        <dt class="col-5">Submitted</dt><dd class="col-7">${new Date(r.submissionDate).toLocaleString()}</dd>
+        ${r.reviewedByName ? `<dt class="col-5">Reviewed By</dt><dd class="col-7">${r.reviewedByName}</dd>` : ''}
+        ${r.justificationNotes ? `<dt class="col-5">Notes</dt><dd class="col-7">${r.justificationNotes}</dd>` : ''}
+        ${r.fulfillmentDate ? `<dt class="col-5">Fulfilled</dt><dd class="col-7">${new Date(r.fulfillmentDate).toLocaleString()}</dd>` : ''}
+      </dl>`;
+    document.getElementById('detailActions').innerHTML = '<button class="btn btn-secondary" data-bs-dismiss="modal">Close</button>';
+    new bootstrap.Modal(document.getElementById('detailModal')).show();
+  }
+
+  async function approve(id) {
+    if (!confirm('Approve this request?')) return;
+    try {
+      await api('PATCH', `/aid-requests/${id}/approve`);
+      showSuccess('Request approved');
+      loadRequests();
+    } catch(e) { showError(e.message); }
+  }
+
+  function openDeny(id) {
+    const justification = prompt('Enter justification for denial (required):');
+    if (!justification) return;
+    api('PATCH', `/aid-requests/${id}/deny?justification=${encodeURIComponent(justification)}`)
+      .then(() => { showSuccess('Request denied'); loadRequests(); })
+      .catch(e => showError(e.message));
+  }
+
+  async function fulfill(id) {
+    if (!confirm('Mark this request as fulfilled?')) return;
+    try {
+      await api('PATCH', `/aid-requests/${id}/fulfill`);
+      showSuccess('Request fulfilled');
+      loadRequests();
+    } catch(e) { showError(e.message); }
+  }
+
+  function openNewModal() {
+    document.getElementById('nBenId').value = '';
+    document.getElementById('nAidType').value = 'MONETARY';
+    document.getElementById('nDesc').value = '';
+    document.getElementById('nAmount').value = '';
+    document.getElementById('nItem').value = '';
+    toggleAmountField();
+    new bootstrap.Modal(document.getElementById('newModal')).show();
+  }
+
+  function toggleAmountField() {
+    const type = document.getElementById('nAidType').value;
+    document.getElementById('amountField').classList.toggle('d-none', type !== 'MONETARY');
+    document.getElementById('itemField').classList.toggle('d-none', type === 'MONETARY');
+  }
+
+  async function submitRequest() {
+    const type = document.getElementById('nAidType').value;
+    const body = {
+      beneficiaryId: parseInt(document.getElementById('nBenId').value),
+      aidType: type,
+      description: document.getElementById('nDesc').value,
+      requestedAmount: type === 'MONETARY' ? parseFloat(document.getElementById('nAmount').value) || null : null,
+      requestedItem: type !== 'MONETARY' ? document.getElementById('nItem').value || null : null
+    };
+    try {
+      await api('POST', '/aid-requests', body);
+      bootstrap.Modal.getInstance(document.getElementById('newModal')).hide();
+      showSuccess('Aid request submitted');
+      loadRequests();
+    } catch(e) { showError(e.message); }
+  }
+
+  loadRequests();
+</script>
+</body>
+</html>

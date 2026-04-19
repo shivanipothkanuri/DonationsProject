@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Reports &amp; Audit — CharityAid</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+  <style>
+    body { background: #f8f9fa; }
+    .kpi-card { border: none; border-radius: .75rem; box-shadow: 0 2px 8px rgba(0,0,0,.08); }
+    .kpi-number { font-size: 2rem; font-weight: 700; }
+    .section-title { font-size: 1rem; font-weight: 700; letter-spacing: .03em; text-transform: uppercase;
+                     color: #198754; border-bottom: 2px solid #198754; padding-bottom: .3rem; margin-bottom: 1rem; margin-top: 2rem; }
+    .tab-nav .nav-link { color: #495057; }
+    .tab-nav .nav-link.active { color: #198754; border-bottom: 3px solid #198754; font-weight: 600; }
+    .progress { height: 10px; border-radius: 5px; }
+  </style>
+</head>
+<body class="bg-light">
+<nav id="mainNav"></nav>
+
+<div class="container py-4">
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <h4 class="fw-bold mb-0">📊 Reports &amp; Audit</h4>
+    <span id="roleTag" class="badge bg-success fs-6"></span>
+  </div>
+
+  <!-- Tab navigation -->
+  <ul class="nav nav-tabs tab-nav mb-4" id="reportTabs">
+    <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tabKpi">KPI Dashboard</button></li>
+    <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabDonations">Donations</button></li>
+    <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabCampaigns">Campaigns</button></li>
+    <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabAidPending">Aid — Pending</button></li>
+    <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabAidFulfilled">Aid — Fulfilled</button></li>
+    <li class="nav-item d-none" id="tabAuditItem"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabAudit">Audit Log</button></li>
+  </ul>
+
+  <div class="tab-content">
+
+    <!-- ── KPI DASHBOARD ─────────────────────────────────────── -->
+    <div class="tab-pane fade show active" id="tabKpi">
+      <div id="kpiContent">
+        <div class="text-center text-muted py-5">Loading KPI data…</div>
+      </div>
+    </div>
+
+    <!-- ── DONATION SUMMARY ──────────────────────────────────── -->
+    <div class="tab-pane fade" id="tabDonations">
+      <!-- Filters -->
+      <div class="card border-0 shadow-sm mb-3">
+        <div class="card-body">
+          <div class="row g-2 align-items-end">
+            <div class="col-md-3">
+              <label class="form-label small fw-semibold">From Date</label>
+              <input type="date" class="form-control" id="donRptFrom">
+            </div>
+            <div class="col-md-3">
+              <label class="form-label small fw-semibold">To Date</label>
+              <input type="date" class="form-control" id="donRptTo">
+            </div>
+            <div class="col-md-2">
+              <label class="form-label small fw-semibold">Campaign ID</label>
+              <input type="number" class="form-control" id="donRptCampaign" placeholder="Any">
+            </div>
+            <div class="col-md-2">
+              <label class="form-label small fw-semibold">Donor ID</label>
+              <input type="number" class="form-control" id="donRptDonor" placeholder="Any">
+            </div>
+            <div class="col-md-auto d-flex gap-2">
+              <button class="btn btn-success" onclick="loadDonationReport()">Run Report</button>
+              <button class="btn btn-outline-secondary" onclick="exportDonationCsv()" title="Export CSV">⬇ CSV</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div id="donRptContent">
+        <div class="text-center text-muted py-4">Apply filters and click <strong>Run Report</strong>.</div>
+      </div>
+    </div>
+
+    <!-- ── CAMPAIGN PROGRESS ─────────────────────────────────── -->
+    <div class="tab-pane fade" id="tabCampaigns">
+      <div class="d-flex justify-content-end mb-3">
+        <button class="btn btn-success" onclick="loadCampaignReport()">Refresh</button>
+      </div>
+      <div id="campRptContent">
+        <div class="text-center text-muted py-4">Loading…</div>
+      </div>
+    </div>
+
+    <!-- ── PENDING AID REQUESTS ───────────────────────────────── -->
+    <div class="tab-pane fade" id="tabAidPending">
+      <div class="d-flex justify-content-end mb-3">
+        <button class="btn btn-warning" onclick="loadAidReport('pending')">Refresh</button>
+      </div>
+      <div id="aidPendingContent">
+        <div class="text-center text-muted py-4">Loading…</div>
+      </div>
+    </div>
+
+    <!-- ── FULFILLED AID REQUESTS ─────────────────────────────── -->
+    <div class="tab-pane fade" id="tabAidFulfilled">
+      <div class="d-flex justify-content-end mb-3">
+        <button class="btn btn-primary" onclick="loadAidReport('fulfilled')">Refresh</button>
+      </div>
+      <div id="aidFulfilledContent">
+        <div class="text-center text-muted py-4">Loading…</div>
+      </div>
+    </div>
+
+    <!-- ── AUDIT LOG (Admin only) ─────────────────────────────── -->
+    <div class="tab-pane fade" id="tabAudit">
+      <!-- Filters -->
+      <div class="card border-0 shadow-sm mb-3">
+        <div class="card-body">
+          <div class="row g-2 align-items-end">
+            <div class="col-md-3">
+              <label class="form-label small fw-semibold">Entity Type</label>
+              <select class="form-select" id="auditEntityType">
+                <option value="">All</option>
+                <option value="USER">USER</option>
+                <option value="DONATION">DONATION</option>
+                <option value="CAMPAIGN">CAMPAIGN</option>
+                <option value="AID_REQUEST">AID_REQUEST</option>
+                <option value="BENEFICIARY">BENEFICIARY</option>
+                <option value="INVENTORY">INVENTORY</option>
+                <option value="RECURRING_DONATION">RECURRING_DONATION</option>
+              </select>
+            </div>
+            <div class="col-md-3">
+              <label class="form-label small fw-semibold">Performed By (email)</label>
+              <input type="email" class="form-control" id="auditPerformedBy" placeholder="any@email.com">
+            </div>
+            <div class="col-md-auto">
+              <button class="btn btn-dark" onclick="loadAuditLog(0)">Search</button>
+              <button class="btn btn-outline-secondary ms-1" onclick="clearAuditFilters()">Clear</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card border-0 shadow-sm">
+        <div class="card-body p-0">
+          <div class="table-responsive">
+            <table class="table table-sm table-hover mb-0">
+              <thead class="table-dark">
+                <tr>
+                  <th>#</th>
+                  <th>Entity</th>
+                  <th>Entity ID</th>
+                  <th>Action</th>
+                  <th>Performed By</th>
+                  <th>Details</th>
+                  <th>Timestamp</th>
+                </tr>
+              </thead>
+              <tbody id="auditRows">
+                <tr><td colspan="7" class="text-center text-muted p-4">Loading…</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+      <div id="auditPagination" class="mt-3 d-flex justify-content-center"></div>
+    </div>
+
+  </div><!-- /tab-content -->
+</div>
+
+<div id="toast-container" class="position-fixed bottom-0 end-0 p-3" style="z-index:9999"></div>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="/js/auth.js"></script>
+<script>
+  requireAuth();
+  buildNav('mainNav');
+
+  const role = getRole();
+  const allowedRoles = ['STAFF','CASE_MANAGER','ADMINISTRATOR','LEADERSHIP'];
+  if (!allowedRoles.includes(role)) {
+    window.location.href = '/dashboard.html';
+  }
+
+  document.getElementById('roleTag').textContent = role.replace('_', ' ');
+
+  // Show audit tab only for admins
+  if (role === 'ADMINISTRATOR') {
+    document.getElementById('tabAuditItem').classList.remove('d-none');
+  }
+
+  // Hide KPI tab for STAFF / CASE_MANAGER
+  if (['STAFF','CASE_MANAGER'].includes(role)) {
+    document.querySelector('[data-bs-target="#tabKpi"]').closest('li').classList.add('d-none');
+  }
+
+  // ─── Auto-load when tabs become visible ─────────────────────────────────────
+  document.getElementById('reportTabs').addEventListener('shown.bs.tab', e => {
+    const target = e.target.dataset.bsTarget;
+    if (target === '#tabKpi')          loadKpi();
+    if (target === '#tabCampaigns')    loadCampaignReport();
+    if (target === '#tabAidPending')   loadAidReport('pending');
+    if (target === '#tabAidFulfilled') loadAidReport('fulfilled');
+    if (target === '#tabAudit')        loadAuditLog(0);
+  });
+
+  // ─── KPI Dashboard ───────────────────────────────────────────────────────────
+  async function loadKpi() {
+    const container = document.getElementById('kpiContent');
+    container.innerHTML = '<div class="text-center text-muted py-5">Loading KPI data…</div>';
+    try {
+      const res = await api('GET', '/reports/kpi');
+      const d = res.data;
+      container.innerHTML = `
+        <div class="section-title">Campaigns</div>
+        <div class="row g-3 mb-3">
+          ${kpiCard('Total Campaigns',   d.totalCampaigns,      'success',  '📢')}
+          ${kpiCard('Active',            d.activeCampaigns,     'success',  '✅')}
+          ${kpiCard('Completed',         d.completedCampaigns,  'primary',  '🏁')}
+          ${kpiCard('Closed',            d.closedCampaigns,     'secondary','🔒')}
+        </div>
+
+        <div class="section-title">Donations</div>
+        <div class="row g-3 mb-3">
+          ${kpiCard('Total Donations',   d.totalDonations,     'info',    '💳')}
+          ${kpiCard('Money Collected',   '$' + Number(d.totalMonetaryCollected || 0).toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2}), 'success', '💰')}
+        </div>
+
+        <div class="section-title">Aid Requests</div>
+        <div class="row g-3 mb-3">
+          ${kpiCard('Pending',    d.pendingRequests,   'warning', '⏳')}
+          ${kpiCard('Approved',   d.approvedRequests,  'success', '✔')}
+          ${kpiCard('Denied',     d.deniedRequests,    'danger',  '✖')}
+          ${kpiCard('Fulfilled',  d.fulfilledRequests, 'primary', '📦')}
+        </div>
+
+        <div class="section-title">Inventory &amp; Users</div>
+        <div class="row g-3">
+          ${kpiCard('Inventory Items', d.totalInventoryItems, 'secondary','📦')}
+          ${kpiCard('Low Stock Items', d.lowStockItems,       'danger',   '⚠️')}
+          ${kpiCard('Active Users',    d.totalActiveUsers,    'dark',     '👥')}
+        </div>`;
+    } catch(e) {
+      container.innerHTML = `<div class="alert alert-danger">Could not load KPI data: ${e.message}</div>`;
+    }
+  }
+
+  function kpiCard(label, value, color, icon) {
+    return `
+      <div class="col-6 col-md-3">
+        <div class="card kpi-card text-center p-3">
+          <div class="fs-2">${icon}</div>
+          <div class="kpi-number text-${color}">${value}</div>
+          <div class="text-muted small">${label}</div>
+        </div>
+      </div>`;
+  }
+
+  // ─── Donation Summary ────────────────────────────────────────────────────────
+  async function loadDonationReport() {
+    const from  = document.getElementById('donRptFrom').value;
+    const to    = document.getElementById('donRptTo').value;
+    const cid   = document.getElementById('donRptCampaign').value;
+    const did   = document.getElementById('donRptDonor').value;
+
+    let url = '/reports/donations?';
+    if (from && to) url += `from=${from}T00:00:00&to=${to}T23:59:59&`;
+    if (cid)        url += `campaignId=${cid}&`;
+    if (did)        url += `donorId=${did}&`;
+
+    const container = document.getElementById('donRptContent');
+    container.innerHTML = '<div class="text-center text-muted py-4">Loading…</div>';
+    try {
+      const res = await api('GET', url);
+      const d = res.data;
+      const fromLabel = d.from ? new Date(d.from).toLocaleDateString() : 'All time';
+      const toLabel   = d.to   ? new Date(d.to).toLocaleDateString()   : 'now';
+      const rows = (d.byCampaign || []).map(c => `
+        <tr>
+          <td>${c.campaignId}</td>
+          <td class="fw-semibold">${c.campaignTitle}</td>
+          <td>${c.donationCount}</td>
+          <td class="text-success fw-semibold">$${Number(c.totalAmount || 0).toFixed(2)}</td>
+        </tr>`).join('') || '<tr><td colspan="4" class="text-center text-muted">No data for this period.</td></tr>';
+
+      container.innerHTML = `
+        <div class="row g-3 mb-4">
+          <div class="col-md-3">
+            <div class="card kpi-card text-center p-3">
+              <div class="kpi-number text-primary">${d.totalDonationCount}</div>
+              <div class="text-muted small">Total Donations</div>
+            </div>
+          </div>
+          <div class="col-md-3">
+            <div class="card kpi-card text-center p-3">
+              <div class="kpi-number text-success">$${Number(d.grandTotalMonetary || 0).toFixed(2)}</div>
+              <div class="text-muted small">Grand Total Monetary</div>
+            </div>
+          </div>
+          <div class="col-md-6">
+            <div class="card kpi-card p-3">
+              <div class="text-muted small">Period</div>
+              <div class="fw-semibold">${fromLabel} — ${toLabel}</div>
+            </div>
+          </div>
+        </div>
+        <div class="section-title">By Campaign</div>
+        <div class="table-responsive">
+          <table class="table table-hover table-sm">
+            <thead class="table-success">
+              <tr><th>Campaign ID</th><th>Campaign</th><th>Donations</th><th>Total ($)</th></tr>
+            </thead>
+            <tbody>${rows}</tbody>
+          </table>
+        </div>`;
+    } catch(e) {
+      container.innerHTML = `<div class="alert alert-danger">Failed to load donation report: ${e.message}</div>`;
+    }
+  }
+
+  async function exportDonationCsv() {
+    const from = document.getElementById('donRptFrom').value;
+    const to   = document.getElementById('donRptTo').value;
+    const cid  = document.getElementById('donRptCampaign').value;
+    const did  = document.getElementById('donRptDonor').value;
+
+    let url = '/api/reports/donations/csv?';
+    if (from && to) url += `from=${from}T00:00:00&to=${to}T23:59:59&`;
+    if (cid)        url += `campaignId=${cid}&`;
+    if (did)        url += `donorId=${did}&`;
+
+    try {
+      const token = getToken();
+      const res = await fetch(url, { headers: token ? { Authorization: `Bearer ${token}` } : {} });
+      if (!res.ok) throw new Error('Export failed');
+      const blob = await res.blob();
+      const a = document.createElement('a');
+      a.href = window.URL.createObjectURL(blob);
+      a.download = 'donation-summary.csv';
+      document.body.appendChild(a); a.click(); a.remove();
+      window.URL.revokeObjectURL(a.href);
+      showSuccess('CSV downloaded');
+    } catch(e) { showError(e.message); }
+  }
+
+  // ─── Campaign Progress ───────────────────────────────────────────────────────
+  async function loadCampaignReport() {
+    const container = document.getElementById('campRptContent');
+    container.innerHTML = '<div class="text-center text-muted py-4">Loading…</div>';
+    try {
+      const res = await api('GET', '/reports/campaigns');
+      const d = res.data;
+      if (!d.campaigns || !d.campaigns.length) {
+        container.innerHTML = '<div class="alert alert-info">No active campaigns found.</div>';
+        return;
+      }
+      const rows = d.campaigns.map(c => {
+        const pct = Math.min(100, Math.round(c.percentComplete));
+        const barColor = pct >= 90 ? 'bg-success' : pct >= 50 ? 'bg-info' : 'bg-warning';
+        const statusClass = { ACTIVE:'success', COMPLETED:'primary', CLOSED:'secondary' }[c.status] || 'secondary';
+        return `
+          <tr>
+            <td>${c.campaignId}</td>
+            <td class="fw-semibold">${c.campaignTitle}</td>
+            <td>${c.category || '—'}</td>
+            <td>$${Number(c.goalAmount).toFixed(2)}</td>
+            <td>$${Number(c.collectedAmount || 0).toFixed(2)}</td>
+            <td style="min-width:140px">
+              <div class="progress mb-1">
+                <div class="progress-bar ${barColor}" style="width:${pct}%"></div>
+              </div>
+              <span class="small text-muted">${pct}%</span>
+            </td>
+            <td><span class="badge bg-${statusClass}">${c.status}</span></td>
+          </tr>`;
+      }).join('');
+
+      container.innerHTML = `
+        <div class="alert alert-info py-2">
+          <strong>${d.totalActiveCampaigns}</strong> active campaign(s) currently running.
+        </div>
+        <div class="table-responsive">
+          <table class="table table-hover table-sm">
+            <thead class="table-success">
+              <tr><th>ID</th><th>Title</th><th>Category</th><th>Goal</th><th>Collected</th><th>Progress</th><th>Status</th></tr>
+            </thead>
+            <tbody>${rows}</tbody>
+          </table>
+        </div>`;
+    } catch(e) {
+      container.innerHTML = `<div class="alert alert-danger">Failed: ${e.message}</div>`;
+    }
+  }
+
+  // ─── Aid Request Reports ─────────────────────────────────────────────────────
+  async function loadAidReport(type) {
+    const containerId = type === 'pending' ? 'aidPendingContent' : 'aidFulfilledContent';
+    const container = document.getElementById(containerId);
+    container.innerHTML = '<div class="text-center text-muted py-4">Loading…</div>';
+    try {
+      const res = await api('GET', `/reports/aid-requests/${type}`);
+      const d = res.data;
+      if (!d.requests || !d.requests.length) {
+        container.innerHTML = `<div class="alert alert-info">No ${type} aid requests found.</div>`;
+        return;
+      }
+
+      const isPending = type === 'pending';
+      const statusColors = { PENDING:'warning', APPROVED:'success', DENIED:'danger', FULFILLED:'primary' };
+
+      const rows = d.requests.map(r => `
+        <tr>
+          <td>${r.requestId}</td>
+          <td class="fw-semibold">${r.beneficiaryName}</td>
+          <td>${r.aidType}</td>
+          <td>${r.requestedAmount ? '$'+Number(r.requestedAmount).toFixed(2) : r.requestedItem || '—'}</td>
+          <td><span class="badge bg-${statusColors[r.status] || 'secondary'}">${r.status}</span></td>
+          <td>${new Date(r.submissionDate).toLocaleDateString()}</td>
+          ${!isPending ? `<td>${r.reviewedBy || '—'}</td>` : ''}
+          ${!isPending && type === 'fulfilled' ? `<td>${r.fulfillmentDate ? new Date(r.fulfillmentDate).toLocaleDateString() : '—'}</td>` : ''}
+        </tr>`).join('');
+
+      const extraCols = !isPending
+        ? `<th>Reviewed By</th>${type === 'fulfilled' ? '<th>Fulfilled Date</th>' : ''}`
+        : '';
+
+      container.innerHTML = `
+        <div class="alert alert-secondary py-2 mb-3">
+          <strong>${d.totalCount}</strong> ${type} request(s) found.
+        </div>
+        <div class="table-responsive">
+          <table class="table table-hover table-sm">
+            <thead class="${isPending ? 'table-warning' : 'table-primary'}">
+              <tr>
+                <th>ID</th><th>Beneficiary</th><th>Aid Type</th>
+                <th>Amount / Item</th><th>Status</th><th>Submitted</th>${extraCols}
+              </tr>
+            </thead>
+            <tbody>${rows}</tbody>
+          </table>
+        </div>`;
+    } catch(e) {
+      container.innerHTML = `<div class="alert alert-danger">Failed: ${e.message}</div>`;
+    }
+  }
+
+  // ─── Audit Log ───────────────────────────────────────────────────────────────
+  async function loadAuditLog(page = 0) {
+    const entityType  = document.getElementById('auditEntityType').value;
+    const performedBy = document.getElementById('auditPerformedBy').value.trim();
+
+    let url = `/audit?page=${page}&size=20&sort=performedAt,desc`;
+    if (entityType)  url += `&entityType=${entityType}`;
+    if (performedBy) url += `&performedBy=${encodeURIComponent(performedBy)}`;
+
+    try {
+      const res = await api('GET', url);
+      const data = res.data;
+      const rows = (data.content || []);
+
+      if (!rows.length) {
+        document.getElementById('auditRows').innerHTML = '<tr><td colspan="7" class="text-center text-muted p-4">No audit events found.</td></tr>';
+        document.getElementById('auditPagination').innerHTML = '';
+        return;
+      }
+
+      const actionColors = { CREATE:'success', UPDATE:'warning', DELETE:'danger', LOGIN:'info', LOGOUT:'secondary', CANCEL:'danger', APPROVE:'success', DENY:'danger', FULFILL:'primary' };
+
+      document.getElementById('auditRows').innerHTML = rows.map(a => {
+        const actionColor = actionColors[a.action] || 'dark';
+        return `
+          <tr>
+            <td class="text-muted small">${a.auditId}</td>
+            <td><span class="badge bg-dark">${a.entityType}</span></td>
+            <td class="text-muted small">${a.entityId || '—'}</td>
+            <td><span class="badge bg-${actionColor}">${a.action}</span></td>
+            <td class="small">${a.performedBy || '<em class="text-muted">system</em>'}</td>
+            <td class="small text-muted" style="max-width:300px;white-space:normal">${a.details || '—'}</td>
+            <td class="small text-muted text-nowrap">${new Date(a.performedAt).toLocaleString([], { dateStyle:'short', timeStyle:'short' })}</td>
+          </tr>`;
+      }).join('');
+
+      renderAuditPagination(data.totalPages, page);
+    } catch(e) {
+      document.getElementById('auditRows').innerHTML = `<tr><td colspan="7" class="text-center text-danger p-4">${e.message}</td></tr>`;
+    }
+  }
+
+  function renderAuditPagination(total, current) {
+    if (total <= 1) { document.getElementById('auditPagination').innerHTML = ''; return; }
+    let html = '<nav><ul class="pagination pagination-sm">';
+    const start = Math.max(0, current - 2);
+    const end   = Math.min(total - 1, current + 2);
+    if (start > 0)        html += `<li class="page-item"><button class="page-link" onclick="loadAuditLog(0)">« First</button></li>`;
+    for (let i = start; i <= end; i++)
+      html += `<li class="page-item${i===current?' active':''}"><button class="page-link" onclick="loadAuditLog(${i})">${i+1}</button></li>`;
+    if (end < total - 1)  html += `<li class="page-item"><button class="page-link" onclick="loadAuditLog(${total-1})">Last »</button></li>`;
+    document.getElementById('auditPagination').innerHTML = html + '</ul></nav>';
+  }
+
+  function clearAuditFilters() {
+    document.getElementById('auditEntityType').value = '';
+    document.getElementById('auditPerformedBy').value = '';
+    loadAuditLog(0);
+  }
+
+  // ─── Initial load based on user's visible first tab ─────────────────────────
+  (function init() {
+    const isLeadershipOrAdmin = ['ADMINISTRATOR','LEADERSHIP'].includes(role);
+    if (isLeadershipOrAdmin) {
+      loadKpi();
+    } else {
+      // STAFF / CASE_MANAGER: default to first non-hidden tab = Donations
+      const firstTab = document.querySelector('#reportTabs .nav-link:not(.d-none)');
+      if (firstTab) new bootstrap.Tab(firstTab).show();
+      loadDonationReport();
+    }
+  })();
+</script>
+</body>
+</html>

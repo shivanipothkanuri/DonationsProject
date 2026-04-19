@@ -1,0 +1,14 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "java",
+            "name": "Run Charity Aid",
+            "request": "launch",
+            "mainClass": "org.charityaid.charity_aid.CharityAidApplication",
+            "projectName": "charity-aid",
+            "cwd": "${workspaceFolder}",
+            "envFile": "${workspaceFolder}/.env.local"
+        }
+    ]
+}

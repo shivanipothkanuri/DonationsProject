@@ -1,0 +1,964 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>CharityAid — API Reference</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+  <style>
+    body { background: #f8f9fa; }
+    .section-header { background: #198754; color: #fff; padding: .5rem 1rem; border-radius: .4rem; margin-top: 2rem; margin-bottom: 1rem; }
+    .badge-get    { background: #198754; }
+    .badge-post   { background: #0d6efd; }
+    .badge-put    { background: #fd7e14; }
+    .badge-patch  { background: #ffc107; color: #000 !important; }
+    .badge-delete { background: #dc3545; }
+    .method-badge { font-size: .75rem; width: 62px; display: inline-block; text-align: center; }
+    .endpoint-path { font-family: monospace; font-size: .9rem; }
+    .role-badge { font-size: .7rem; }
+    pre { background: #212529; color: #f8f9fa; border-radius: .4rem; padding: 1rem; font-size: .8rem; overflow-x: auto; }
+    .table td, .table th { vertical-align: middle; }
+    .sticky-top-md { position: sticky; top: 0; z-index: 100; }
+  </style>
+</head>
+<body>
+
+<nav class="navbar navbar-dark bg-success sticky-top-md">
+  <div class="container-fluid">
+    <span class="navbar-brand fw-bold">🤝 CharityAid — API Reference</span>
+    <span class="text-white-50 small">Base URL: <code class="text-white">http://localhost:8080</code></span>
+  </div>
+</nav>
+
+<div class="container my-4">
+
+  <!-- Auth header -->
+  <div class="alert alert-info">
+    <strong>Authentication:</strong> All protected endpoints require the header
+    <code>Authorization: Bearer &lt;token&gt;</code>.
+    Obtain a token from <code>POST /api/auth/login</code> or <code>POST /api/auth/setup</code>.
+  </div>
+
+  <!-- Role legend -->
+  <div class="card mb-4">
+    <div class="card-header fw-bold">Role Legend</div>
+    <div class="card-body">
+      <table class="table table-sm mb-0">
+        <thead><tr><th>Token</th><th>Full Name</th><th>Description</th></tr></thead>
+        <tbody>
+          <tr><td><span class="badge bg-secondary">Public</span></td><td>No auth required</td><td>Anyone (unauthenticated) can call this endpoint.</td></tr>
+          <tr><td><span class="badge bg-primary">Any Auth</span></td><td>Any logged-in user</td><td>Valid JWT required, any role accepted.</td></tr>
+          <tr><td><span class="badge bg-success">DONOR</span></td><td>Donor</td><td>Self-registered donor accounts.</td></tr>
+          <tr><td><span class="badge bg-info text-dark">STAFF</span></td><td>Staff</td><td>Front-line staff, created by admin.</td></tr>
+          <tr><td><span class="badge bg-warning text-dark">CASE_MGR</span></td><td>Case Manager</td><td>Reviews and approves aid requests.</td></tr>
+          <tr><td><span class="badge bg-danger">ADMIN</span></td><td>Administrator</td><td>Full system access.</td></tr>
+          <tr><td><span class="badge bg-dark">LEADERSHIP</span></td><td>Leadership</td><td>Read-only reports and dashboards.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ===================== AUTH ===================== -->
+  <h5 class="section-header">🔑 Authentication — <code>/api/auth</code></h5>
+
+  <!-- setup-needed -->
+  <div class="card mb-3">
+    <div class="card-body">
+      <div class="d-flex align-items-center gap-2 mb-2">
+        <span class="badge badge-get method-badge">GET</span>
+        <span class="endpoint-path">/api/auth/setup-needed</span>
+        <span class="badge bg-secondary role-badge">Public</span>
+      </div>
+      <p class="mb-1 text-muted small">Check whether the first-time admin setup is still required. The login page calls this automatically to decide whether to show the Setup tab.</p>
+      <strong class="small">Response body:</strong>
+      <pre>{ "status": "OK", "message": "OK", "data": true }</pre>
+      <p class="mb-0 small"><code>data</code> is <code>true</code> when no ADMINISTRATOR account exists, <code>false</code> otherwise.</p>
+    </div>
+  </div>
+
+  <!-- setup -->
+  <div class="card mb-3">
+    <div class="card-body">
+      <div class="d-flex align-items-center gap-2 mb-2">
+        <span class="badge badge-post method-badge">POST</span>
+        <span class="endpoint-path">/api/auth/setup</span>
+        <span class="badge bg-secondary role-badge">Public</span>
+        <span class="badge bg-warning text-dark role-badge">One-time only</span>
+      </div>
+      <p class="mb-1 text-muted small">Create the first Administrator account. Fails with <code>409 Conflict</code> if an admin already exists.</p>
+      <strong class="small">Request body:</strong>
+      <pre>{
+  "fullName":    "Admin Name",
+  "email":       "admin@example.com",
+  "password":    "SecurePass1!",   // min 8 chars
+  "phoneNumber": "+1 555 000 0000" // optional
+}</pre>
+      <strong class="small">Success response (201):</strong>
+      <pre>{ "status": "OK", "message": "Administrator account created successfully",
+  "data": { "token": "...", "userId": 1, "fullName": "Admin Name",
+            "email": "admin@example.com", "role": "ADMINISTRATOR", "expiresIn": 900000 } }</pre>
+    </div>
+  </div>
+
+  <!-- register -->
+  <div class="card mb-3">
+    <div class="card-body">
+      <div class="d-flex align-items-center gap-2 mb-2">
+        <span class="badge badge-post method-badge">POST</span>
+        <span class="endpoint-path">/api/auth/register</span>
+        <span class="badge bg-secondary role-badge">Public</span>
+      </div>
+      <p class="mb-1 text-muted small">Self-register as a Donor. Role is hard-coded to DONOR.</p>
+      <strong class="small">Request body:</strong>
+      <pre>{
+  "fullName":    "Jane Doe",
+  "email":       "jane@example.com",
+  "password":    "mypassword",
+  "phoneNumber": "+1 555 111 2222" // optional
+}</pre>
+      <strong class="small">Success response (201):</strong>
+      <pre>{ "status": "OK", "message": "Registration successful",
+  "data": { "token": "...", "role": "DONOR", ... } }</pre>
+    </div>
+  </div>
+
+  <!-- login -->
+  <div class="card mb-3">
+    <div class="card-body">
+      <div class="d-flex align-items-center gap-2 mb-2">
+        <span class="badge badge-post method-badge">POST</span>
+        <span class="endpoint-path">/api/auth/login</span>
+        <span class="badge bg-secondary role-badge">Public</span>
+      </div>
+      <p class="mb-1 text-muted small">Authenticate and obtain a JWT. Account is locked after 5 consecutive failures.</p>
+      <strong class="small">Request body:</strong>
+      <pre>{
+  "email":    "user@example.com",
+  "password": "mypassword"
+}</pre>
+      <strong class="small">Success response (200):</strong>
+      <pre>{ "status": "OK", "message": "Login successful",
+  "data": { "token": "eyJ...", "tokenType": "Bearer", "userId": 1,
+            "fullName": "Jane Doe", "email": "...", "role": "DONOR", "expiresIn": 900000 } }</pre>
+      <p class="mb-0 small"><strong>Token expiry:</strong> 15 minutes (900 000 ms). Re-login to get a new token.</p>
+    </div>
+  </div>
+
+  <!-- logout -->
+  <div class="card mb-3">
+    <div class="card-body">
+      <div class="d-flex align-items-center gap-2 mb-2">
+        <span class="badge badge-post method-badge">POST</span>
+        <span class="endpoint-path">/api/auth/logout</span>
+        <span class="badge bg-primary role-badge">Any Auth</span>
+      </div>
+      <p class="mb-0 text-muted small">Log out the current user. Request is recorded in the audit trail.</p>
+    </div>
+  </div>
+
+  <!-- forgot-password -->
+  <div class="card mb-3">
+    <div class="card-body">
+      <div class="d-flex align-items-center gap-2 mb-2">
+        <span class="badge badge-post method-badge">POST</span>
+        <span class="endpoint-path">/api/auth/forgot-password</span>
+        <span class="badge bg-secondary role-badge">Public</span>
+      </div>
+      <p class="mb-1 text-muted small">Request a password reset. Sends an email with a reset token/link.</p>
+      <strong class="small">Request body:</strong>
+      <pre>{ "email": "user@example.com" }</pre>
+    </div>
+  </div>
+
+  <!-- reset-password -->
+  <div class="card mb-3">
+    <div class="card-body">
+      <div class="d-flex align-items-center gap-2 mb-2">
+        <span class="badge badge-post method-badge">POST</span>
+        <span class="endpoint-path">/api/auth/reset-password</span>
+        <span class="badge bg-secondary role-badge">Public</span>
+      </div>
+      <p class="mb-1 text-muted small">Complete password reset using the token from the email.</p>
+      <strong class="small">Request body:</strong>
+      <pre>{ "token": "reset_token_from_email", "newPassword": "newpass123" }</pre>
+    </div>
+  </div>
+
+  <!-- mfa/setup -->
+  <div class="card mb-3">
+    <div class="card-body">
+      <div class="d-flex align-items-center gap-2 mb-2">
+        <span class="badge badge-post method-badge">POST</span>
+        <span class="endpoint-path">/api/auth/mfa/setup</span>
+        <span class="badge bg-primary role-badge">Any Auth</span>
+      </div>
+      <p class="mb-1 text-muted small">Initiate MFA (TOTP) setup. Returns a secret and QR code URI to scan with an authenticator app.</p>
+      <strong class="small">Success response (200):</strong>
+      <pre>{ "status": "OK", "message": "MFA setup initiated",
+  "data": { "secret": "...", "qrUri": "otpauth://totp/..." } }</pre>
+      <p class="mb-0 small">Scan the QR code, then call <code>/api/auth/mfa/confirm</code> with the generated code.</p>
+    </div>
+  </div>
+
+  <!-- mfa/confirm -->
+  <div class="card mb-3">
+    <div class="card-body">
+      <div class="d-flex align-items-center gap-2 mb-2">
+        <span class="badge badge-post method-badge">POST</span>
+        <span class="endpoint-path">/api/auth/mfa/confirm</span>
+        <span class="badge bg-primary role-badge">Any Auth</span>
+      </div>
+      <p class="mb-1 text-muted small">Confirm MFA setup by providing a code from the authenticator app.</p>
+      <strong class="small">Request body:</strong>
+      <pre>{ "code": "123456" }</pre>
+      <p class="mb-0 small">After confirmation, MFA is enabled on the user account.</p>
+    </div>
+  </div>
+
+  <!-- mfa/verify -->
+  <div class="card mb-3">
+    <div class="card-body">
+      <div class="d-flex align-items-center gap-2 mb-2">
+        <span class="badge badge-post method-badge">POST</span>
+        <span class="endpoint-path">/api/auth/mfa/verify</span>
+        <span class="badge bg-primary role-badge">Any Auth</span>
+      </div>
+      <p class="mb-1 text-muted small">Verify a TOTP code during login or for sensitive operations.</p>
+      <strong class="small">Request body:</strong>
+      <pre>{ "code": "123456" }</pre>
+    </div>
+  </div>
+
+  <!-- mfa/disable -->
+  <div class="card mb-3">
+    <div class="card-body">
+      <div class="d-flex align-items-center gap-2 mb-2">
+        <span class="badge badge-delete method-badge">DELETE</span>
+        <span class="endpoint-path">/api/auth/mfa</span>
+        <span class="badge bg-primary role-badge">Any Auth</span>
+      </div>
+      <p class="mb-0 text-muted small">Disable MFA on the current user's account.</p>
+    </div>
+  </div>
+
+  <!-- ===================== USERS ===================== -->
+  <h5 class="section-header">👤 Users — <code>/api/users</code></h5>
+
+  <!-- GET /me -->
+  <div class="card mb-3">
+    <div class="card-body">
+      <div class="d-flex align-items-center gap-2 mb-2">
+        <span class="badge badge-get method-badge">GET</span>
+        <span class="endpoint-path">/api/users/me</span>
+        <span class="badge bg-primary role-badge">Any Auth</span>
+      </div>
+      <p class="mb-1 text-muted small">Fetch the currently-authenticated user's profile.</p>
+      <strong class="small">Response:</strong> User object with id, fullName, email, role, status, lastLogin.
+    </div>
+  </div>
+
+  <!-- PUT /me -->
+  <div class="card mb-3">
+    <div class="card-body">
+      <div class="d-flex align-items-center gap-2 mb-2">
+        <span class="badge badge-put method-badge">PUT</span>
+        <span class="endpoint-path">/api/users/me</span>
+        <span class="badge bg-primary role-badge">Any Auth</span>
+      </div>
+      <p class="mb-1 text-muted small">Update own profile (name and phone only).</p>
+      <strong class="small">Request body:</strong>
+      <pre>{ "fullName": "New Name", "phoneNumber": "+1 555 999 0000" }</pre>
+    </div>
+  </div>
+
+  <!-- PUT /me/password -->
+  <div class="card mb-3">
+    <div class="card-body">
+      <div class="d-flex align-items-center gap-2 mb-2">
+        <span class="badge badge-put method-badge">PUT</span>
+        <span class="endpoint-path">/api/users/me/password</span>
+        <span class="badge bg-primary role-badge">Any Auth</span>
+      </div>
+      <p class="mb-1 text-muted small">Change own password. Must provide current password for verification.</p>
+      <strong class="small">Request body:</strong>
+      <pre>{ "currentPassword": "oldpass", "newPassword": "newpass123" }</pre>
+    </div>
+  </div>
+
+  <!-- GET / (admin) -->
+  <div class="card mb-3">
+    <div class="card-body">
+      <div class="d-flex align-items-center gap-2 mb-2">
+        <span class="badge badge-get method-badge">GET</span>
+        <span class="endpoint-path">/api/users?page=0&amp;size=20</span>
+        <span class="badge bg-danger role-badge">ADMIN</span>
+      </div>
+      <p class="mb-1 text-muted small">List all user accounts (paginated).</p>
+    </div>
+  </div>
+
+  <!-- GET /{id} -->
+  <div class="card mb-3">
+    <div class="card-body">
+      <div class="d-flex align-items-center gap-2 mb-2">
+        <span class="badge badge-get method-badge">GET</span>
+        <span class="endpoint-path">/api/users/{id}</span>
+        <span class="badge bg-danger role-badge">ADMIN</span>
+      </div>
+      <p class="mb-1 text-muted small">Fetch any user by their ID.</p>
+    </div>
+  </div>
+
+  <!-- POST / (create staff/admin) -->
+  <div class="card mb-3">
+    <div class="card-body">
+      <div class="d-flex align-items-center gap-2 mb-2">
+        <span class="badge badge-post method-badge">POST</span>
+        <span class="endpoint-path">/api/users</span>
+        <span class="badge bg-danger role-badge">ADMIN</span>
+      </div>
+      <p class="mb-1 text-muted small">Create a Staff, Case Manager, or Leadership account. Can also create additional admins.</p>
+      <strong class="small">Request body:</strong>
+      <pre>{
+  "fullName":    "Staff Member",
+  "email":       "staff@example.com",
+  "password":    "temppass1",
+  "phoneNumber": "+1 555 000 0001",  // optional
+  "role":        "STAFF"             // STAFF | CASE_MANAGER | ADMINISTRATOR | LEADERSHIP
+}</pre>
+    </div>
+  </div>
+
+  <!-- PATCH role -->
+  <div class="card mb-3">
+    <div class="card-body">
+      <div class="d-flex align-items-center gap-2 mb-2">
+        <span class="badge badge-patch method-badge">PATCH</span>
+        <span class="endpoint-path">/api/users/{id}/role?role=STAFF</span>
+        <span class="badge bg-danger role-badge">ADMIN</span>
+      </div>
+      <p class="mb-1 text-muted small">Change a user's role. Query param <code>role</code> must be one of: DONOR, STAFF, CASE_MANAGER, ADMINISTRATOR, LEADERSHIP.</p>
+    </div>
+  </div>
+
+  <!-- PATCH deactivate -->
+  <div class="card mb-3">
+    <div class="card-body">
+      <div class="d-flex align-items-center gap-2 mb-2">
+        <span class="badge badge-patch method-badge">PATCH</span>
+        <span class="endpoint-path">/api/users/{id}/deactivate</span>
+        <span class="badge bg-danger role-badge">ADMIN</span>
+      </div>
+      <p class="mb-0 text-muted small">Set user status to INACTIVE. Prevents login.</p>
+    </div>
+  </div>
+
+  <!-- PATCH reactivate -->
+  <div class="card mb-3">
+    <div class="card-body">
+      <div class="d-flex align-items-center gap-2 mb-2">
+        <span class="badge badge-patch method-badge">PATCH</span>
+        <span class="endpoint-path">/api/users/{id}/reactivate</span>
+        <span class="badge bg-danger role-badge">ADMIN</span>
+      </div>
+      <p class="mb-0 text-muted small">Restore a deactivated or suspended user to ACTIVE status.</p>
+    </div>
+  </div>
+
+  <!-- PATCH suspend -->
+  <div class="card mb-3">
+    <div class="card-body">
+      <div class="d-flex align-items-center gap-2 mb-2">
+        <span class="badge badge-patch method-badge">PATCH</span>
+        <span class="endpoint-path">/api/users/{id}/suspend</span>
+        <span class="badge bg-danger role-badge">ADMIN</span>
+      </div>
+      <p class="mb-0 text-muted small">Set user status to SUSPENDED (e.g. for policy violation).</p>
+    </div>
+  </div>
+
+  <!-- PATCH unlock -->
+  <div class="card mb-3">
+    <div class="card-body">
+      <div class="d-flex align-items-center gap-2 mb-2">
+        <span class="badge badge-patch method-badge">PATCH</span>
+        <span class="endpoint-path">/api/users/{id}/unlock</span>
+        <span class="badge bg-danger role-badge">ADMIN</span>
+      </div>
+      <p class="mb-0 text-muted small">Unlock a LOCKED account (locked after 5 failed login attempts). Resets failed-attempt counter.</p>
+    </div>
+  </div>
+  <!-- ===================== NOTIFICATION TEMPLATES ===================== -->
+  <h5 class="section-header">📧 Notification Templates — <code>/api/notification-templates</code></h5>
+
+  <div class="card mb-3">
+    <div class="card-body">
+      <div class="d-flex align-items-center gap-2 mb-2">
+        <span class="badge badge-get method-badge">GET</span>
+        <span class="endpoint-path">/api/notification-templates</span>
+        <span class="badge bg-danger role-badge">ADMIN</span>
+      </div>
+      <p class="mb-1 text-muted small">List all email notification templates with their current subject and body text.</p>
+      <p class="mb-0 small"><strong>Template keys:</strong> donation_confirmation, campaign_alert, aid_approval, aid_denial, escalation, password_reset, fulfillment_notice, pending_reminder, bulk_update, high_value_donation_alert.</p>
+    </div>
+  </div>
+
+  <div class="card mb-3">
+    <div class="card-body">
+      <div class="d-flex align-items-center gap-2 mb-2">
+        <span class="badge badge-get method-badge">GET</span>
+        <span class="endpoint-path">/api/notification-templates/{templateKey}</span>
+        <span class="badge bg-danger role-badge">ADMIN</span>
+      </div>
+      <p class="mb-1 text-muted small">Fetch a single template by its key. Returns the template's subject, body, and supported variables.</p>
+      <strong class="small">Example response:</strong>
+      <pre>{ "status": "OK", "data": { "templateKey": "donation_confirmation",
+    "subject": "Thank you for your donation!",
+    "body": "Dear {{donorName}}, we received {{amount}} on {{date}}...",
+    "variables": ["donorName", "amount", "date"] } }</pre>
+    </div>
+  </div>
+
+  <div class="card mb-3">
+    <div class="card-body">
+      <div class="d-flex align-items-center gap-2 mb-2">
+        <span class="badge badge-put method-badge">PUT</span>
+        <span class="endpoint-path">/api/notification-templates/{templateKey}</span>
+        <span class="badge bg-danger role-badge">ADMIN</span>
+      </div>
+      <p class="mb-1 text-muted small">Update a template's subject and/or body. Changes are audit-logged.</p>
+      <strong class="small">Request body:</strong>
+      <pre>{
+  "subject": "New subject with {{variables}}",
+  "body":    "Updated email body with {{variable}} substitution..."
+}</pre>
+    </div>
+  </div>
+  <!-- ===================== CAMPAIGNS ===================== -->
+  <h5 class="section-header">📣 Campaigns — <code>/api/campaigns</code></h5>
+
+  <div class="card mb-3">
+    <div class="card-body">
+      <div class="d-flex align-items-center gap-2 mb-2">
+        <span class="badge badge-get method-badge">GET</span>
+        <span class="endpoint-path">/api/campaigns/active?size=10</span>
+        <span class="badge bg-secondary role-badge">Public</span>
+      </div>
+      <p class="mb-0 text-muted small">List campaigns with status=ACTIVE. Used on the public donation page.</p>
+    </div>
+  </div>
+
+  <div class="card mb-3">
+    <div class="card-body">
+      <div class="d-flex align-items-center gap-2 mb-2">
+        <span class="badge badge-get method-badge">GET</span>
+        <span class="endpoint-path">/api/campaigns?page=0&amp;size=20</span>
+        <span class="badge bg-info text-dark role-badge">STAFF</span>
+        <span class="badge bg-danger role-badge">ADMIN</span>
+      </div>
+      <p class="mb-0 text-muted small">List all campaigns regardless of status (paginated).</p>
+    </div>
+  </div>
+
+  <div class="card mb-3">
+    <div class="card-body">
+      <div class="d-flex align-items-center gap-2 mb-2">
+        <span class="badge badge-get method-badge">GET</span>
+        <span class="endpoint-path">/api/campaigns/{id}</span>
+        <span class="badge bg-primary role-badge">Any Auth</span>
+      </div>
+      <p class="mb-0 text-muted small">Get details of a single campaign.</p>
+    </div>
+  </div>
+
+  <div class="card mb-3">
+    <div class="card-body">
+      <div class="d-flex align-items-center gap-2 mb-2">
+        <span class="badge badge-post method-badge">POST</span>
+        <span class="endpoint-path">/api/campaigns</span>
+        <span class="badge bg-info text-dark role-badge">STAFF</span>
+        <span class="badge bg-danger role-badge">ADMIN</span>
+      </div>
+      <p class="mb-1 text-muted small">Create a new fundraising campaign.</p>
+      <strong class="small">Request body:</strong>
+      <pre>{
+  "campaignName":  "Winter Coats Drive",
+  "description":   "Collect warm coats for families in need.",
+  "goalAmount":    5000.00,
+  "startDate":     "2025-11-01",
+  "endDate":       "2025-12-31"
+}</pre>
+    </div>
+  </div>
+
+  <div class="card mb-3">
+    <div class="card-body">
+      <div class="d-flex align-items-center gap-2 mb-2">
+        <span class="badge badge-put method-badge">PUT</span>
+        <span class="endpoint-path">/api/campaigns/{id}</span>
+        <span class="badge bg-info text-dark role-badge">STAFF</span>
+        <span class="badge bg-danger role-badge">ADMIN</span>
+      </div>
+      <p class="mb-1 text-muted small">Update campaign details. Same body fields as POST.</p>
+    </div>
+  </div>
+
+  <div class="card mb-3">
+    <div class="card-body">
+      <div class="d-flex align-items-center gap-2 mb-2">
+        <span class="badge badge-patch method-badge">PATCH</span>
+        <span class="endpoint-path">/api/campaigns/{id}/close</span>
+        <span class="badge bg-info text-dark role-badge">STAFF</span>
+        <span class="badge bg-danger role-badge">ADMIN</span>
+      </div>
+      <p class="mb-0 text-muted small">Mark a campaign as CLOSED. No new donations can be added to a closed campaign.</p>
+    </div>
+  </div>
+
+  <div class="card mb-3">
+    <div class="card-body">
+      <div class="d-flex align-items-center gap-2 mb-2">
+        <span class="badge badge-post method-badge">POST</span>
+        <span class="endpoint-path">/api/campaigns/{id}/bulk-update</span>
+        <span class="badge bg-info text-dark role-badge">STAFF</span>
+        <span class="badge bg-danger role-badge">ADMIN</span>
+      </div>
+      <p class="mb-1 text-muted small">Send a bulk email notification to all donors who have contributed to this campaign.</p>
+      <strong class="small">Request body:</strong>
+      <pre>{
+  "subject": "Campaign Update",
+  "message": "Dear {{donorName}}, here is an update on {{campaignName}}..."
+}</pre>
+      <p class="mb-0 small">Email sent to all active donors with custom message and variable substitution (campaignName, donorName, etc).</p>
+    </div>
+  </div>
+
+  <div class="card mb-3">
+    <div class="card-body">
+      <div class="d-flex align-items-center gap-2 mb-2">
+        <span class="badge badge-delete method-badge">DELETE</span>
+        <span class="endpoint-path">/api/campaigns/{id}</span>
+        <span class="badge bg-danger role-badge">ADMIN</span>
+      </div>
+      <p class="mb-0 text-muted small">Delete a campaign. Fails with <code>409</code> if the campaign has any associated donations.</p>
+    </div>
+  </div>
+
+  <!-- ===================== DONATIONS ===================== -->
+  <h5 class="section-header">💰 Donations — <code>/api/donations</code></h5>
+
+  <div class="card mb-3">
+    <div class="card-body">
+      <div class="d-flex align-items-center gap-2 mb-2">
+        <span class="badge badge-post method-badge">POST</span>
+        <span class="endpoint-path">/api/donations</span>
+        <span class="badge bg-success role-badge">DONOR</span>
+      </div>
+      <p class="mb-1 text-muted small">Submit a new donation. The donor is taken from the JWT — no userId needed in the body.</p>
+      <strong class="small">Request body:</strong>
+      <pre>{
+  "campaignId":     3,
+  "amount":         100.00,
+  "paymentMethod":  "CREDIT_CARD",   // CREDIT_CARD | DEBIT_CARD | BANK_TRANSFER | CASH | CHEQUE
+  "notes":          "Happy to help!" // optional
+}</pre>
+    </div>
+  </div>
+
+  <div class="card mb-3">
+    <div class="card-body">
+      <div class="d-flex align-items-center gap-2 mb-2">
+        <span class="badge badge-get method-badge">GET</span>
+        <span class="endpoint-path">/api/donations/my?page=0&amp;size=10&amp;from=2025-01-01&amp;to=2025-12-31&amp;campaignId=3</span>
+        <span class="badge bg-success role-badge">DONOR</span>
+      </div>
+      <p class="mb-1 text-muted small">View own donation history. All query params are optional.</p>
+      <ul class="small mb-0">
+        <li><code>from</code> / <code>to</code> — ISO date filter (YYYY-MM-DD)</li>
+        <li><code>campaignId</code> — filter by a specific campaign</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="card mb-3">
+    <div class="card-body">
+      <div class="d-flex align-items-center gap-2 mb-2">
+        <span class="badge badge-get method-badge">GET</span>
+        <span class="endpoint-path">/api/donations/{id}</span>
+        <span class="badge bg-info text-dark role-badge">STAFF</span>
+        <span class="badge bg-warning text-dark role-badge">CASE_MGR</span>
+        <span class="badge bg-danger role-badge">ADMIN</span>
+      </div>
+      <p class="mb-0 text-muted small">Fetch a single donation record by ID.</p>
+    </div>
+  </div>
+
+  <div class="card mb-3">
+    <div class="card-body">
+      <div class="d-flex align-items-center gap-2 mb-2">
+        <span class="badge badge-post method-badge">POST</span>
+        <span class="endpoint-path">/api/donations/recurring</span>
+        <span class="badge bg-success role-badge">DONOR</span>
+      </div>
+      <p class="mb-1 text-muted small">Schedule a recurring donation. The system will automatically process donations at the specified frequency.</p>
+      <strong class="small">Request body:</strong>
+      <pre>{
+  "campaignId":    3,
+  "amount":        50.00,
+  "frequency":     "MONTHLY",        // WEEKLY | MONTHLY
+  "paymentMethod": "CREDIT_CARD",    // CREDIT_CARD | DEBIT_CARD | BANK_TRANSFER
+  "notes":         "Monthly support" // optional
+}</pre>
+    </div>
+  </div>
+
+  <div class="card mb-3">
+    <div class="card-body">
+      <div class="d-flex align-items-center gap-2 mb-2">
+        <span class="badge badge-get method-badge">GET</span>
+        <span class="endpoint-path">/api/donations/recurring/my</span>
+        <span class="badge bg-success role-badge">DONOR</span>
+      </div>
+      <p class="mb-0 text-muted small">List all active recurring donations for the current donor.</p>
+    </div>
+  </div>
+
+  <div class="card mb-3">
+    <div class="card-body">
+      <div class="d-flex align-items-center gap-2 mb-2">
+        <span class="badge badge-delete method-badge">DELETE</span>
+        <span class="endpoint-path">/api/donations/recurring/{id}</span>
+        <span class="badge bg-success role-badge">DONOR</span>
+      </div>
+      <p class="mb-0 text-muted small">Cancel a recurring donation schedule. Processing stops immediately.</p>
+    </div>
+  </div>
+
+  <!-- ===================== BENEFICIARIES ===================== -->
+  <h5 class="section-header">🏥 Beneficiaries — <code>/api/beneficiaries</code></h5>
+
+  <div class="card mb-3">
+    <div class="card-body">
+      <div class="d-flex align-items-center gap-2 mb-2">
+        <span class="badge badge-get method-badge">GET</span>
+        <span class="endpoint-path">/api/beneficiaries?search=khan&amp;page=0&amp;size=20</span>
+        <span class="badge bg-info text-dark role-badge">STAFF</span>
+        <span class="badge bg-warning text-dark role-badge">CASE_MGR</span>
+        <span class="badge bg-danger role-badge">ADMIN</span>
+      </div>
+      <p class="mb-1 text-muted small">List beneficiaries. <code>search</code> matches name, NIC, or phone.</p>
+    </div>
+  </div>
+
+  <div class="card mb-3">
+    <div class="card-body">
+      <div class="d-flex align-items-center gap-2 mb-2">
+        <span class="badge badge-get method-badge">GET</span>
+        <span class="endpoint-path">/api/beneficiaries/{id}</span>
+        <span class="badge bg-info text-dark role-badge">STAFF</span>
+        <span class="badge bg-warning text-dark role-badge">CASE_MGR</span>
+        <span class="badge bg-danger role-badge">ADMIN</span>
+      </div>
+      <p class="mb-0 text-muted small">Get a single beneficiary's full record.</p>
+    </div>
+  </div>
+
+  <div class="card mb-3">
+    <div class="card-body">
+      <div class="d-flex align-items-center gap-2 mb-2">
+        <span class="badge badge-post method-badge">POST</span>
+        <span class="endpoint-path">/api/beneficiaries</span>
+        <span class="badge bg-info text-dark role-badge">STAFF</span>
+        <span class="badge bg-danger role-badge">ADMIN</span>
+      </div>
+      <p class="mb-1 text-muted small">Register a new beneficiary.</p>
+      <strong class="small">Request body:</strong>
+      <pre>{
+  "fullName":       "Ali Hassan",
+  "nicNumber":      "AB1234567",
+  "dateOfBirth":    "1985-03-15",     // optional
+  "phoneNumber":    "+92 300 1234567",
+  "address":        "123 Main St, City",
+  "householdSize":  4,                // optional
+  "notes":          "Single parent"  // optional
+}</pre>
+    </div>
+  </div>
+
+  <div class="card mb-3">
+    <div class="card-body">
+      <div class="d-flex align-items-center gap-2 mb-2">
+        <span class="badge badge-put method-badge">PUT</span>
+        <span class="endpoint-path">/api/beneficiaries/{id}</span>
+        <span class="badge bg-info text-dark role-badge">STAFF</span>
+        <span class="badge bg-danger role-badge">ADMIN</span>
+      </div>
+      <p class="mb-1 text-muted small">Update beneficiary details. Same body fields as POST.</p>
+    </div>
+  </div>
+
+  <div class="card mb-3">
+    <div class="card-body">
+      <div class="d-flex align-items-center gap-2 mb-2">
+        <span class="badge badge-patch method-badge">PATCH</span>
+        <span class="endpoint-path">/api/beneficiaries/{id}/deactivate</span>
+        <span class="badge bg-danger role-badge">ADMIN</span>
+      </div>
+      <p class="mb-0 text-muted small">Mark a beneficiary as inactive. Prevents new aid requests for this beneficiary.</p>
+    </div>
+  </div>
+
+  <!-- ===================== AID REQUESTS ===================== -->
+  <h5 class="section-header">📋 Aid Requests — <code>/api/aid-requests</code></h5>
+
+  <div class="card mb-3">
+    <div class="card-body">
+      <div class="d-flex align-items-center gap-2 mb-2">
+        <span class="badge badge-get method-badge">GET</span>
+        <span class="endpoint-path">/api/aid-requests?page=0&amp;size=20&amp;status=PENDING</span>
+        <span class="badge bg-info text-dark role-badge">STAFF</span>
+        <span class="badge bg-warning text-dark role-badge">CASE_MGR</span>
+        <span class="badge bg-danger role-badge">ADMIN</span>
+      </div>
+      <p class="mb-1 text-muted small">List aid requests with optional status filter.</p>
+      <p class="mb-0 small"><strong>Status values:</strong> PENDING · APPROVED · DENIED · FULFILLED</p>
+    </div>
+  </div>
+
+  <div class="card mb-3">
+    <div class="card-body">
+      <div class="d-flex align-items-center gap-2 mb-2">
+        <span class="badge badge-get method-badge">GET</span>
+        <span class="endpoint-path">/api/aid-requests/{id}</span>
+        <span class="badge bg-info text-dark role-badge">STAFF</span>
+        <span class="badge bg-warning text-dark role-badge">CASE_MGR</span>
+        <span class="badge bg-danger role-badge">ADMIN</span>
+      </div>
+      <p class="mb-0 text-muted small">Get a single aid request's full details.</p>
+    </div>
+  </div>
+
+  <div class="card mb-3">
+    <div class="card-body">
+      <div class="d-flex align-items-center gap-2 mb-2">
+        <span class="badge badge-post method-badge">POST</span>
+        <span class="endpoint-path">/api/aid-requests</span>
+        <span class="badge bg-info text-dark role-badge">STAFF</span>
+        <span class="badge bg-danger role-badge">ADMIN</span>
+      </div>
+      <p class="mb-1 text-muted small">Submit a new aid request on behalf of a beneficiary.</p>
+      <strong class="small">Request body:</strong>
+      <pre>{
+  "beneficiaryId":  12,
+  "requestType":    "FOOD",           // FOOD | CLOTHING | MEDICAL | SHELTER | OTHER
+  "description":    "Family of 4 needs emergency food supply",
+  "urgencyLevel":   "HIGH",           // LOW | MEDIUM | HIGH | CRITICAL
+  "inventoryItemId": 5,               // optional — link to inventory item
+  "quantityNeeded": 2                 // optional
+}</pre>
+    </div>
+  </div>
+
+  <div class="card mb-3">
+    <div class="card-body">
+      <div class="d-flex align-items-center gap-2 mb-2">
+        <span class="badge badge-patch method-badge">PATCH</span>
+        <span class="endpoint-path">/api/aid-requests/{id}/approve</span>
+        <span class="badge bg-warning text-dark role-badge">CASE_MGR</span>
+        <span class="badge bg-danger role-badge">ADMIN</span>
+      </div>
+      <p class="mb-0 text-muted small">Approve a PENDING request. Status changes to APPROVED.</p>
+    </div>
+  </div>
+
+  <div class="card mb-3">
+    <div class="card-body">
+      <div class="d-flex align-items-center gap-2 mb-2">
+        <span class="badge badge-patch method-badge">PATCH</span>
+        <span class="endpoint-path">/api/aid-requests/{id}/deny?justification=Ineligible</span>
+        <span class="badge bg-warning text-dark role-badge">CASE_MGR</span>
+        <span class="badge bg-danger role-badge">ADMIN</span>
+      </div>
+      <p class="mb-1 text-muted small">Deny a PENDING request. <code>justification</code> query param (required) is stored as the denial reason.</p>
+    </div>
+  </div>
+
+  <div class="card mb-3">
+    <div class="card-body">
+      <div class="d-flex align-items-center gap-2 mb-2">
+        <span class="badge badge-patch method-badge">PATCH</span>
+        <span class="endpoint-path">/api/aid-requests/{id}/fulfill</span>
+        <span class="badge bg-info text-dark role-badge">STAFF</span>
+        <span class="badge bg-danger role-badge">ADMIN</span>
+      </div>
+      <p class="mb-0 text-muted small">Mark an APPROVED request as FULFILLED. Decrements linked inventory item quantity if applicable.</p>
+    </div>
+  </div>
+
+  <!-- ===================== INVENTORY ===================== -->
+  <h5 class="section-header">📦 Inventory — <code>/api/inventory</code></h5>
+
+  <div class="card mb-3">
+    <div class="card-body">
+      <div class="d-flex align-items-center gap-2 mb-2">
+        <span class="badge badge-get method-badge">GET</span>
+        <span class="endpoint-path">/api/inventory?page=0&amp;size=20</span>
+        <span class="badge bg-info text-dark role-badge">STAFF</span>
+        <span class="badge bg-danger role-badge">ADMIN</span>
+      </div>
+      <p class="mb-0 text-muted small">List all inventory items (paginated).</p>
+    </div>
+  </div>
+
+  <div class="card mb-3">
+    <div class="card-body">
+      <div class="d-flex align-items-center gap-2 mb-2">
+        <span class="badge badge-get method-badge">GET</span>
+        <span class="endpoint-path">/api/inventory/{id}</span>
+        <span class="badge bg-info text-dark role-badge">STAFF</span>
+        <span class="badge bg-danger role-badge">ADMIN</span>
+      </div>
+      <p class="mb-0 text-muted small">Get a single inventory item by ID.</p>
+    </div>
+  </div>
+
+  <div class="card mb-3">
+    <div class="card-body">
+      <div class="d-flex align-items-center gap-2 mb-2">
+        <span class="badge badge-get method-badge">GET</span>
+        <span class="endpoint-path">/api/inventory/low-stock</span>
+        <span class="badge bg-info text-dark role-badge">STAFF</span>
+        <span class="badge bg-danger role-badge">ADMIN</span>
+      </div>
+      <p class="mb-0 text-muted small">Returns items whose current quantity is at or below their reorder threshold.</p>
+    </div>
+  </div>
+
+  <div class="card mb-3">
+    <div class="card-body">
+      <div class="d-flex align-items-center gap-2 mb-2">
+        <span class="badge badge-post method-badge">POST</span>
+        <span class="endpoint-path">/api/inventory</span>
+        <span class="badge bg-info text-dark role-badge">STAFF</span>
+        <span class="badge bg-danger role-badge">ADMIN</span>
+      </div>
+      <p class="mb-1 text-muted small">Add a new inventory item.</p>
+      <strong class="small">Request body:</strong>
+      <pre>{
+  "itemName":        "Winter Blanket",
+  "category":        "CLOTHING",       // FOOD | CLOTHING | MEDICAL | SHELTER | OTHER
+  "description":     "Heavy wool blanket",  // optional
+  "quantityInStock": 50,
+  "reorderThreshold": 10,              // alert when stock falls to this level
+  "unit":            "pieces"          // optional, e.g. kg, litres, boxes
+}</pre>
+    </div>
+  </div>
+
+  <div class="card mb-3">
+    <div class="card-body">
+      <div class="d-flex align-items-center gap-2 mb-2">
+        <span class="badge badge-put method-badge">PUT</span>
+        <span class="endpoint-path">/api/inventory/{id}</span>
+        <span class="badge bg-info text-dark role-badge">STAFF</span>
+        <span class="badge bg-danger role-badge">ADMIN</span>
+      </div>
+      <p class="mb-1 text-muted small">Update an inventory item. Same body fields as POST.</p>
+    </div>
+  </div>
+
+  <div class="card mb-3">
+    <div class="card-body">
+      <div class="d-flex align-items-center gap-2 mb-2">
+        <span class="badge badge-delete method-badge">DELETE</span>
+        <span class="endpoint-path">/api/inventory/{id}</span>
+        <span class="badge bg-danger role-badge">ADMIN</span>
+      </div>
+      <p class="mb-0 text-muted small">Delete an inventory item. Fails if the item is linked to any unresolved aid requests.</p>
+    </div>
+  </div>
+
+  <!-- ===================== REPORTS ===================== -->
+  <h5 class="section-header">📊 Reports — <code>/api/reports</code></h5>
+
+  <div class="card mb-3">
+    <div class="card-body">
+      <div class="d-flex align-items-center gap-2 mb-2">
+        <span class="badge badge-get method-badge">GET</span>
+        <span class="endpoint-path">/api/reports/compliance?from=2025-01-01&amp;to=2025-12-31&amp;entityType=User&amp;performedBy=admin@example.com</span>
+        <span class="badge bg-dark role-badge">LEADERSHIP</span>
+        <span class="badge bg-danger role-badge">ADMIN</span>
+      </div>
+      <p class="mb-1 text-muted small">Generate a compliance audit report from the audit trail. All query parameters are optional.</p>
+      <ul class="small mb-2">
+        <li><code>from</code> / <code>to</code> — ISO date filter (YYYY-MM-DD) for date range</li>
+        <li><code>entityType</code> — filter by entity (User, Campaign, Donation, AidRequest, etc.)</li>
+        <li><code>performedBy</code> — filter by email of the action performer</li>
+      </ul>
+      <strong class="small">Response includes:</strong>
+      <pre>{ "status": "OK", "data": {
+    "totalEvents": 150,
+    "createCount": 40,
+    "updateCount": 60,
+    "deleteCount": 20,
+    "securityEventCount": 30,
+    "entries": [ {...audit log entries...} ] } }</pre>
+    </div>
+  </div>
+
+  <!-- ===================== ERROR FORMAT ===================== -->
+  <h5 class="section-header">⚠ Standard Error Response Format</h5>
+  <div class="card mb-3">
+    <div class="card-body">
+      <p class="mb-1 text-muted small">All errors follow the same JSON envelope:</p>
+      <pre>{
+  "status":  "ERROR",
+  "message": "Human-readable error description",
+  "data":    null
+}</pre>
+      <table class="table table-sm table-bordered mt-2 mb-0">
+        <thead class="table-dark"><tr><th>HTTP Code</th><th>Meaning</th></tr></thead>
+        <tbody>
+          <tr><td>400</td><td>Validation error — check request body fields.</td></tr>
+          <tr><td>401</td><td>Not authenticated — missing or expired JWT.</td></tr>
+          <tr><td>403</td><td>Forbidden — your role does not permit this action, or account is locked/suspended.</td></tr>
+          <tr><td>404</td><td>Resource not found.</td></tr>
+          <tr><td>409</td><td>Conflict — e.g. duplicate email, campaign already has donations.</td></tr>
+          <tr><td>500</td><td>Internal server error.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ===================== QUICK CURL EXAMPLES ===================== -->
+  <h5 class="section-header">🖥 Quick cURL Examples</h5>
+  <div class="card mb-3">
+    <div class="card-body">
+      <p class="small fw-bold mb-1">1. Create first admin (one-time setup):</p>
+      <pre>curl -X POST http://localhost:8080/api/auth/setup \
+  -H "Content-Type: application/json" \
+  -d '{"fullName":"Admin","email":"admin@cams.org","password":"Admin@1234"}'</pre>
+
+      <p class="small fw-bold mb-1 mt-3">2. Login and capture token:</p>
+      <pre>curl -X POST http://localhost:8080/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"admin@cams.org","password":"Admin@1234"}'</pre>
+
+      <p class="small fw-bold mb-1 mt-3">3. Use token for a protected call (replace TOKEN):</p>
+      <pre>curl http://localhost:8080/api/users \
+  -H "Authorization: Bearer TOKEN"</pre>
+
+      <p class="small fw-bold mb-1 mt-3">4. Create a campaign:</p>
+      <pre>curl -X POST http://localhost:8080/api/campaigns \
+  -H "Authorization: Bearer TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"campaignName":"Food Drive","description":"Monthly food drive","goalAmount":3000,"startDate":"2025-08-01","endDate":"2025-08-31"}'</pre>
+    </div>
+  </div>
+
+  <p class="text-center text-muted small mt-4">CharityAid — Charity &amp; Aid Management System &copy; 2025</p>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

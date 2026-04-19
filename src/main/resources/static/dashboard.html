@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Dashboard — CharityAid</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+</head>
+<body class="bg-light">
+<nav id="mainNav"></nav>
+<div class="container py-4">
+  <div id="welcome" class="mb-4"></div>
+  <div id="cards" class="row g-3"></div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="/js/auth.js"></script>
+<script>
+  requireAuth();
+  buildNav('mainNav');
+  const user = getUser();
+  const role = getRole();
+
+  document.getElementById('welcome').innerHTML = `
+    <h3 class="fw-bold">Welcome back, ${user.fullName} 👋</h3>
+    <p class="text-muted">Role: <span class="badge bg-success">${role.replace('_',' ')}</span></p>`;
+
+  const allCards = [
+    { role: ['DONOR','STAFF','CASE_MANAGER','ADMINISTRATOR','LEADERSHIP'],
+      color: 'success', icon: '📢', title: 'Active Campaigns',
+      text: 'Browse fundraising campaigns and support causes.',
+      link: '/campaigns.html', btn: 'View Campaigns' },
+    { role: ['DONOR'],
+      color: 'primary', icon: '💳', title: 'My Donations',
+      text: 'View your donation history, download receipts.',
+      link: '/donations.html', btn: 'My Donations' },
+    { role: ['STAFF','ADMINISTRATOR'],
+      color: 'info', icon: '👤', title: 'Beneficiaries',
+      text: 'Register and manage aid beneficiaries.',
+      link: '/beneficiaries.html', btn: 'Manage' },
+    { role: ['STAFF','CASE_MANAGER','ADMINISTRATOR'],
+      color: 'warning', icon: '📋', title: 'Aid Requests',
+      text: 'Submit, review, approve and fulfil aid requests.',
+      link: '/aid-requests.html', btn: 'View Queue' },
+    { role: ['STAFF','ADMINISTRATOR'],
+      color: 'secondary', icon: '📦', title: 'Inventory',
+      text: 'Manage in-kind donation stock and low-stock alerts.',
+      link: '/inventory.html', btn: 'Inventory' },
+    { role: ['STAFF','CASE_MANAGER','ADMINISTRATOR','LEADERSHIP'],
+      color: 'danger', icon: '📊', title: 'Reports & Audit',
+      text: 'Donation summaries, campaign progress, KPI dashboard and audit log.',
+      link: '/reports.html', btn: 'View Reports' },
+    { role: ['ADMINISTRATOR'],
+      color: 'dark', icon: '⚙️', title: 'User Management',
+      text: 'Create accounts, assign roles, unlock users.',
+      link: '/users.html', btn: 'Manage Users' },
+  ];
+
+  const cards = allCards.filter(c => c.role.includes(role));
+  document.getElementById('cards').innerHTML = cards.map(c => `
+    <div class="col-md-4">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-body">
+          <div class="fs-2 mb-2">${c.icon}</div>
+          <h5 class="card-title fw-bold">${c.title}</h5>
+          <p class="card-text text-muted">${c.text}</p>
+        </div>
+        <div class="card-footer bg-transparent border-0">
+          <a href="${c.link}" class="btn btn-${c.color} w-100">${c.btn}</a>
+        </div>
+      </div>
+    </div>`).join('');
+</script>
+</body>
+</html>

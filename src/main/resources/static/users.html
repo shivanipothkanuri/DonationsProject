@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>User Management – CAMS</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet" />
+  <style>
+    body { background: #f8f9fa; }
+    .navbar-brand { font-weight: 700; color: #0d6efd !important; }
+    .page-header { background: linear-gradient(135deg, #343a40 0%, #495057 100%); color: #fff; padding: 2rem 0; margin-bottom: 2rem; }
+    .status-badge { font-size: 0.75rem; }
+    .table th { background: #e9ecef; }
+    #toast-container { position: fixed; bottom: 1.5rem; end: 1.5rem; z-index: 9999; }
+    .action-btn { font-size: 0.75rem; padding: 0.2rem 0.5rem; }
+  </style>
+</head>
+<body>
+
+<!-- Navbar -->
+<nav class="navbar navbar-expand-lg navbar-light bg-white shadow-sm" id="mainNav"></nav>
+
+<!-- Page Header -->
+<div class="page-header">
+  <div class="container d-flex justify-content-between align-items-center">
+    <div>
+      <h2 class="mb-1"><i class="bi bi-people-fill me-2"></i>User Management</h2>
+      <p class="mb-0 text-white-50">Create accounts, change roles, manage access</p>
+    </div>
+    <button class="btn btn-light fw-semibold" data-bs-toggle="modal" data-bs-target="#createUserModal">
+      <i class="bi bi-person-plus me-2"></i>Create Account
+    </button>
+  </div>
+</div>
+
+<div class="container mb-5">
+
+  <!-- Filters -->
+  <div class="card shadow-sm mb-3">
+    <div class="card-body py-2">
+      <div class="row g-2 align-items-center">
+        <div class="col-md-4">
+          <input class="form-control form-control-sm" id="searchInput" placeholder="Search name or email…" />
+        </div>
+        <div class="col-md-3">
+          <select class="form-select form-select-sm" id="roleFilter">
+            <option value="">All Roles</option>
+            <option value="DONOR">Donor</option>
+            <option value="STAFF">Staff</option>
+            <option value="CASE_MANAGER">Case Manager</option>
+            <option value="ADMINISTRATOR">Administrator</option>
+            <option value="LEADERSHIP">Leadership</option>
+          </select>
+        </div>
+        <div class="col-md-3">
+          <select class="form-select form-select-sm" id="statusFilter">
+            <option value="">All Statuses</option>
+            <option value="ACTIVE">Active</option>
+            <option value="INACTIVE">Inactive</option>
+            <option value="SUSPENDED">Suspended</option>
+            <option value="LOCKED">Locked</option>
+          </select>
+        </div>
+        <div class="col-md-2">
+          <button class="btn btn-sm btn-outline-secondary w-100" onclick="loadUsers()">
+            <i class="bi bi-arrow-clockwise me-1"></i>Refresh
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Stats row -->
+  <div class="row g-3 mb-3" id="statsRow">
+    <div class="col-6 col-md-3">
+      <div class="card text-center border-0 shadow-sm">
+        <div class="card-body py-2">
+          <div class="fs-4 fw-bold text-primary" id="statTotal">–</div>
+          <div class="small text-muted">Total Users</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="card text-center border-0 shadow-sm">
+        <div class="card-body py-2">
+          <div class="fs-4 fw-bold text-success" id="statActive">–</div>
+          <div class="small text-muted">Active</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="card text-center border-0 shadow-sm">
+        <div class="card-body py-2">
+          <div class="fs-4 fw-bold text-warning" id="statSuspended">–</div>
+          <div class="small text-muted">Suspended</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="card text-center border-0 shadow-sm">
+        <div class="card-body py-2">
+          <div class="fs-4 fw-bold text-danger" id="statLocked">–</div>
+          <div class="small text-muted">Locked</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Users Table -->
+  <div class="card shadow-sm">
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-hover mb-0">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Email</th>
+              <th>Phone</th>
+              <th>Role</th>
+              <th>Status</th>
+              <th>Failed Logins</th>
+              <th>Joined</th>
+              <th class="text-end">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="usersTableBody">
+            <tr><td colspan="8" class="text-center py-4 text-muted">Loading users…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Pagination -->
+  <nav class="mt-3" id="paginationNav" aria-label="User pagination" style="display:none">
+    <ul class="pagination justify-content-center" id="paginationList"></ul>
+  </nav>
+</div>
+
+<!-- Create User Modal -->
+<div class="modal fade" id="createUserModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="bi bi-person-plus me-2"></i>Create Staff Account</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <form id="createUserForm" novalidate>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Full Name <span class="text-danger">*</span></label>
+            <input type="text" class="form-control" id="newFullName" required placeholder="e.g. Jane Smith" />
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Email Address <span class="text-danger">*</span></label>
+            <input type="email" class="form-control" id="newEmail" required placeholder="jane.smith@charity.org" />
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Password <span class="text-danger">*</span></label>
+            <div class="input-group">
+              <input type="password" class="form-control" id="newPassword" required placeholder="Min. 8 characters" />
+              <button class="btn btn-outline-secondary" type="button" id="toggleNewPwd"
+                      onclick="togglePwd('newPassword', 'toggleNewPwd')">
+                <i class="bi bi-eye"></i>
+              </button>
+            </div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Phone Number</label>
+            <input type="tel" class="form-control" id="newPhone" placeholder="+1 555 000 0000" />
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Role <span class="text-danger">*</span></label>
+            <select class="form-select" id="newRole" required>
+              <option value="" disabled selected>Select a role</option>
+              <option value="STAFF">Staff</option>
+              <option value="CASE_MANAGER">Case Manager</option>
+              <option value="ADMINISTRATOR">Administrator</option>
+              <option value="LEADERSHIP">Leadership</option>
+            </select>
+            <div class="form-text">Donors self-register via the registration page.</div>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-primary" onclick="createUser()">
+          <i class="bi bi-check-lg me-1"></i>Create Account
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Change Role Modal -->
+<div class="modal fade" id="changeRoleModal" tabindex="-1">
+  <div class="modal-dialog modal-sm">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Change Role</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <p class="mb-2 text-muted small" id="changeRoleUserName"></p>
+        <select class="form-select" id="newRoleSelect">
+          <option value="DONOR">Donor</option>
+          <option value="STAFF">Staff</option>
+          <option value="CASE_MANAGER">Case Manager</option>
+          <option value="ADMINISTRATOR">Administrator</option>
+          <option value="LEADERSHIP">Leadership</option>
+        </select>
+        <input type="hidden" id="changeRoleUserId" />
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-primary btn-sm" onclick="applyRoleChange()">Apply</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div id="toast-container" class="position-fixed bottom-0 end-0 p-3" style="z-index:9999"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="/js/auth.js"></script>
+<script>
+  // ── Auth guard: admin only ──────────────────────────────────────────────────
+  (function() {
+    const user = getCurrentUser();
+    if (!user) { window.location.href = '/index.html'; return; }
+    if (user.role !== 'ADMINISTRATOR') { window.location.href = '/dashboard.html'; }
+  })();
+
+  buildNav('mainNav');
+
+  // ── State ───────────────────────────────────────────────────────────────────
+  let currentPage = 0;
+  let totalPages = 0;
+  let allUsers = [];
+
+  // ── Load users ──────────────────────────────────────────────────────────────
+  async function loadUsers(page = 0) {
+    currentPage = page;
+    try {
+      const res = await api(`/api/users?page=${page}&size=20`);
+      if (!res.ok) { showToast('Failed to load users', 'danger'); return; }
+      const body = await res.json();
+
+      // Support both paginated {content:[]} and plain array responses
+      const users = Array.isArray(body.data)
+        ? body.data
+        : (body.data?.content ?? body.data ?? []);
+      allUsers = users;
+
+      totalPages = body.data?.totalPages ?? 1;
+      renderStats(allUsers);
+      renderTable(allUsers);
+      renderPagination();
+    } catch (e) {
+      showToast('Network error loading users', 'danger');
+    }
+  }
+
+  // ── Render stats ────────────────────────────────────────────────────────────
+  function renderStats(users) {
+    document.getElementById('statTotal').textContent = users.length;
+    document.getElementById('statActive').textContent = users.filter(u => u.accountStatus === 'ACTIVE').length;
+    document.getElementById('statSuspended').textContent = users.filter(u => u.accountStatus === 'SUSPENDED').length;
+    document.getElementById('statLocked').textContent = users.filter(u => u.accountStatus === 'LOCKED').length;
+  }
+
+  // ── Render table ─────────────────────────────────────────────────────────────
+  function renderTable(users) {
+    const roleFilter = document.getElementById('roleFilter').value;
+    const statusFilter = document.getElementById('statusFilter').value;
+    const search = document.getElementById('searchInput').value.trim().toLowerCase();
+
+    const filtered = users.filter(u => {
+      if (roleFilter && u.userRole !== roleFilter) return false;
+      if (statusFilter && u.accountStatus !== statusFilter) return false;
+      if (search && !u.fullName.toLowerCase().includes(search) && !u.emailAddress.toLowerCase().includes(search)) return false;
+      return true;
+    });
+
+    const tbody = document.getElementById('usersTableBody');
+    if (!filtered.length) {
+      tbody.innerHTML = '<tr><td colspan="8" class="text-center py-4 text-muted">No users match the current filters.</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = filtered.map(u => {
+      const statusClass = {
+        ACTIVE: 'success', INACTIVE: 'secondary', SUSPENDED: 'warning', LOCKED: 'danger'
+      }[u.accountStatus] || 'secondary';
+
+      const roleClass = {
+        ADMINISTRATOR: 'danger', LEADERSHIP: 'info', CASE_MANAGER: 'warning',
+        STAFF: 'primary', DONOR: 'secondary'
+      }[u.userRole] || 'secondary';
+
+      const roleLabel = u.userRole?.replace('_', ' ') ?? '–';
+      const joined = u.createdDate ? new Date(u.createdDate).toLocaleDateString() : '–';
+      const failedClass = u.failedLoginCount >= 3 ? 'text-danger fw-semibold' : '';
+
+      const actionBtns = buildActionButtons(u);
+
+      return `<tr>
+        <td class="fw-semibold">${escHtml(u.fullName)}</td>
+        <td class="text-muted small">${escHtml(u.emailAddress)}</td>
+        <td class="text-muted small">${escHtml(u.phoneNumber || '–')}</td>
+        <td><span class="badge bg-${roleClass} status-badge">${roleLabel}</span></td>
+        <td><span class="badge bg-${statusClass} status-badge">${u.accountStatus}</span></td>
+        <td class="${failedClass}">${u.failedLoginCount ?? 0}</td>
+        <td class="small text-muted">${joined}</td>
+        <td class="text-end">${actionBtns}</td>
+      </tr>`;
+    }).join('');
+  }
+
+  function buildActionButtons(u) {
+    const id = u.userId;
+    const btns = [];
+    btns.push(`<button class="btn btn-outline-secondary action-btn me-1" onclick="openChangeRole(${id},'${u.fullName}','${u.userRole}')"
+      title="Change role"><i class="bi bi-person-gear"></i></button>`);
+
+    if (u.accountStatus === 'ACTIVE') {
+      btns.push(`<button class="btn btn-outline-warning action-btn me-1" onclick="suspendUser(${id})" title="Suspend">
+        <i class="bi bi-pause-circle"></i></button>`);
+      btns.push(`<button class="btn btn-outline-danger action-btn" onclick="deactivateUser(${id})" title="Deactivate">
+        <i class="bi bi-person-x"></i></button>`);
+    }
+    if (u.accountStatus === 'INACTIVE') {
+      btns.push(`<button class="btn btn-outline-success action-btn" onclick="reactivateUser(${id})" title="Reactivate">
+        <i class="bi bi-person-check"></i></button>`);
+    }
+    if (u.accountStatus === 'SUSPENDED') {
+      btns.push(`<button class="btn btn-outline-success action-btn me-1" onclick="reactivateUser(${id})" title="Reactivate">
+        <i class="bi bi-person-check"></i></button>`);
+    }
+    if (u.accountStatus === 'LOCKED') {
+      btns.push(`<button class="btn btn-outline-primary action-btn" onclick="unlockUser(${id})" title="Unlock account">
+        <i class="bi bi-unlock"></i></button>`);
+    }
+    return btns.join('');
+  }
+
+  // ── Pagination ────────────────────────────────────────────────────────────
+  function renderPagination() {
+    const nav = document.getElementById('paginationNav');
+    if (totalPages <= 1) { nav.style.display = 'none'; return; }
+    nav.style.display = '';
+    const list = document.getElementById('paginationList');
+    let html = '';
+    for (let i = 0; i < totalPages; i++) {
+      html += `<li class="page-item ${i === currentPage ? 'active' : ''}">
+        <button class="page-link" onclick="loadUsers(${i})">${i + 1}</button></li>`;
+    }
+    list.innerHTML = html;
+  }
+
+  // ── Create user ───────────────────────────────────────────────────────────
+  async function createUser() {
+    const fullName = document.getElementById('newFullName').value.trim();
+    const emailAddress = document.getElementById('newEmail').value.trim();
+    const password = document.getElementById('newPassword').value;
+    const phoneNumber = document.getElementById('newPhone').value.trim();
+    const userRole = document.getElementById('newRole').value;
+
+    if (!fullName || !emailAddress || !password || !userRole) {
+      showToast('Please fill in all required fields.', 'warning'); return;
+    }
+    if (password.length < 8) {
+      showToast('Password must be at least 8 characters.', 'warning'); return;
+    }
+
+    try {
+      const res = await api('/api/users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fullName, emailAddress, password, phoneNumber: phoneNumber || null, userRole })
+      });
+      const body = await res.json();
+      if (res.ok) {
+        showToast('Account created successfully!', 'success');
+        bootstrap.Modal.getInstance(document.getElementById('createUserModal')).hide();
+        document.getElementById('createUserForm').reset();
+        loadUsers(currentPage);
+      } else {
+        showToast(body.message || 'Failed to create account', 'danger');
+      }
+    } catch (e) {
+      showToast('Network error', 'danger');
+    }
+  }
+
+  // ── Role change ────────────────────────────────────────────────────────────
+  function openChangeRole(id, name, currentRole) {
+    document.getElementById('changeRoleUserId').value = id;
+    document.getElementById('changeRoleUserName').textContent = name;
+    document.getElementById('newRoleSelect').value = currentRole;
+    new bootstrap.Modal(document.getElementById('changeRoleModal')).show();
+  }
+
+  async function applyRoleChange() {
+    const id = document.getElementById('changeRoleUserId').value;
+    const role = document.getElementById('newRoleSelect').value;
+    try {
+      const res = await api(`/api/users/${id}/role?role=${role}`, { method: 'PATCH' });
+      const body = await res.json();
+      if (res.ok) {
+        showToast('Role updated.', 'success');
+        bootstrap.Modal.getInstance(document.getElementById('changeRoleModal')).hide();
+        loadUsers(currentPage);
+      } else {
+        showToast(body.message || 'Failed to update role', 'danger');
+      }
+    } catch (e) { showToast('Network error', 'danger'); }
+  }
+
+  // ── Status actions ─────────────────────────────────────────────────────────
+  async function statusAction(id, action, label) {
+    if (!confirm(`${label} this user?`)) return;
+    try {
+      const res = await api(`/api/users/${id}/${action}`, { method: 'PATCH' });
+      const body = await res.json();
+      if (res.ok) {
+        showToast(`User ${label.toLowerCase()}d.`, 'success');
+        loadUsers(currentPage);
+      } else {
+        showToast(body.message || `Failed to ${label.toLowerCase()} user`, 'danger');
+      }
+    } catch (e) { showToast('Network error', 'danger'); }
+  }
+
+  const deactivateUser = id => statusAction(id, 'deactivate', 'Deactivate');
+  const reactivateUser = id => statusAction(id, 'reactivate', 'Reactivate');
+  const suspendUser    = id => statusAction(id, 'suspend', 'Suspend');
+  const unlockUser     = id => statusAction(id, 'unlock', 'Unlock');
+
+  // ── Helpers ────────────────────────────────────────────────────────────────
+  function escHtml(str) {
+    if (!str) return '';
+    return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  function togglePwd(inputId, btnId) {
+    const inp = document.getElementById(inputId);
+    const btn = document.getElementById(btnId);
+    if (inp.type === 'password') {
+      inp.type = 'text';
+      btn.innerHTML = '<i class="bi bi-eye-slash"></i>';
+    } else {
+      inp.type = 'password';
+      btn.innerHTML = '<i class="bi bi-eye"></i>';
+    }
+  }
+
+  // Filter listeners
+  ['searchInput','roleFilter','statusFilter'].forEach(id =>
+    document.getElementById(id).addEventListener('input', () => renderTable(allUsers))
+  );
+
+  loadUsers();
+</script>
+</body>
+</html>

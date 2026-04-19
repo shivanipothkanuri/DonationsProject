@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>CharityAid — Login</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+  <style>
+    body { background: linear-gradient(135deg, #198754 0%, #0d6efd 100%); min-height: 100vh; display: flex; align-items: center; }
+    .card { border: none; border-radius: 1rem; box-shadow: 0 8px 32px rgba(0,0,0,.18); }
+    .brand-logo { font-size: 2.5rem; }
+  </style>
+</head>
+<body>
+<div class="container">
+  <div class="row justify-content-center">
+    <div class="col-md-5 col-lg-4">
+      <div class="text-center mb-4">
+        <div class="brand-logo">🤝</div>
+        <h2 class="text-white fw-bold">CharityAid</h2>
+        <p class="text-white-50">Charity & Aid Management System</p>
+      </div>
+      <div class="card p-4">
+        <ul class="nav nav-tabs mb-4" id="authTabs">
+          <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#loginTab">Login</button></li>
+          <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#registerTab">Register as Donor</button></li>
+          <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#forgotTab">Forgot Password</button></li>
+          <li class="nav-item d-none" id="resetTabItem"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#resetTab">Reset Password</button></li>
+          <li class="nav-item d-none" id="setupTabItem"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#setupTab">⚙ First-Time Setup</button></li>
+        </ul>
+        <div class="tab-content">
+
+          <!-- LOGIN -->
+          <div class="tab-pane fade show active" id="loginTab">
+            <form id="loginForm">
+              <div class="mb-3">
+                <label class="form-label">Email Address</label>
+                <input type="email" class="form-control" id="loginEmail" required placeholder="you@example.com">
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Password</label>
+                <input type="password" class="form-control" id="loginPassword" required placeholder="••••••••">
+              </div>
+              <div id="loginError" class="alert alert-danger d-none"></div>
+              <button type="submit" class="btn btn-success w-100 fw-bold" id="loginBtn">Login</button>
+              <div class="text-center mt-3">
+                <a href="#" id="forgotLink">Forgot password?</a>
+              </div>
+            </form>
+          </div>
+
+          <!-- REGISTER -->
+          <div class="tab-pane fade" id="registerTab">
+            <form id="registerForm">
+              <div class="mb-3">
+                <label class="form-label">Full Name</label>
+                <input type="text" class="form-control" id="regName" required placeholder="Your full name">
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Email Address</label>
+                <input type="email" class="form-control" id="regEmail" required placeholder="you@example.com">
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Password <small class="text-muted">(min 8 chars)</small></label>
+                <input type="password" class="form-control" id="regPassword" required minlength="8" placeholder="••••••••">
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Phone <small class="text-muted">(optional)</small></label>
+                <input type="tel" class="form-control" id="regPhone" placeholder="+1 555 000 0000">
+              </div>
+              <div id="regError" class="alert alert-danger d-none"></div>
+              <button type="submit" class="btn btn-primary w-100 fw-bold" id="regBtn">Create Donor Account</button>
+            </form>
+          </div>
+
+          <!-- FIRST-TIME ADMIN SETUP -->
+          <div class="tab-pane fade" id="setupTab">
+            <div class="alert alert-warning py-2 small mb-3">
+              <strong>One-time setup.</strong> Creates the first Administrator account. This tab disappears once an admin exists.
+            </div>
+            <form id="setupForm">
+              <div class="mb-3">
+                <label class="form-label">Full Name</label>
+                <input type="text" class="form-control" id="setupName" required placeholder="Admin full name">
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Email Address</label>
+                <input type="email" class="form-control" id="setupEmail" required placeholder="admin@example.com">
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Password <small class="text-muted">(min 8 chars)</small></label>
+                <input type="password" class="form-control" id="setupPassword" required minlength="8" placeholder="••••••••">
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Phone <small class="text-muted">(optional)</small></label>
+                <input type="tel" class="form-control" id="setupPhone" placeholder="+1 555 000 0000">
+              </div>
+              <div id="setupError" class="alert alert-danger d-none"></div>
+              <button type="submit" class="btn btn-danger w-100 fw-bold" id="setupBtn">Create Administrator Account</button>
+            </form>
+          </div>
+
+          <!-- FORGOT PASSWORD -->
+          <div class="tab-pane fade" id="forgotTab">
+            <div class="alert alert-info py-2 small mb-3">
+              Enter your email and we will send a secure reset link if the account exists.
+            </div>
+            <form id="forgotForm">
+              <div class="mb-3">
+                <label class="form-label">Email Address</label>
+                <input type="email" class="form-control" id="forgotEmail" required placeholder="you@example.com">
+              </div>
+              <div id="forgotMsg" class="alert alert-success d-none"></div>
+              <div id="forgotError" class="alert alert-danger d-none"></div>
+              <button type="submit" class="btn btn-warning w-100 fw-bold" id="forgotBtn">Send Reset Link</button>
+            </form>
+          </div>
+
+          <!-- RESET PASSWORD -->
+          <div class="tab-pane fade" id="resetTab">
+            <div class="alert alert-info py-2 small mb-3">
+              Set a new password using your reset token.
+            </div>
+            <form id="resetForm">
+              <div class="mb-3">
+                <label class="form-label">Reset Token</label>
+                <input type="text" class="form-control" id="resetToken" required placeholder="Paste token from email link">
+              </div>
+              <div class="mb-3">
+                <label class="form-label">New Password <small class="text-muted">(min 8 chars)</small></label>
+                <input type="password" class="form-control" id="resetPassword" required minlength="8" placeholder="••••••••">
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Confirm New Password</label>
+                <input type="password" class="form-control" id="resetPasswordConfirm" required minlength="8" placeholder="••••••••">
+              </div>
+              <div id="resetMsg" class="alert alert-success d-none"></div>
+              <div id="resetError" class="alert alert-danger d-none"></div>
+              <button type="submit" class="btn btn-dark w-100 fw-bold" id="resetBtn">Reset Password</button>
+            </form>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="/js/auth.js"></script>
+<script>
+  const urlParams = new URLSearchParams(window.location.search);
+  const resetTokenFromUrl = urlParams.get('reset');
+
+  if (!resetTokenFromUrl) {
+    redirectIfLoggedIn();
+  }
+
+  const showTab = (selector) => {
+    const tabTrigger = document.querySelector(`button[data-bs-target="${selector}"]`);
+    if (tabTrigger) new bootstrap.Tab(tabTrigger).show();
+  };
+
+  // Check if first-time admin setup is needed; show the tab if so
+  (async () => {
+    try {
+      const res = await fetch('/api/auth/setup-needed');
+      const json = await res.json();
+      if (json.data === true) {
+        document.getElementById('setupTabItem').classList.remove('d-none');
+      }
+    } catch (_) { /* ignore network errors */ }
+  })();
+
+  if (resetTokenFromUrl) {
+    document.getElementById('resetTabItem').classList.remove('d-none');
+    document.getElementById('resetToken').value = resetTokenFromUrl;
+    showTab('#resetTab');
+  }
+
+  document.getElementById('forgotLink').addEventListener('click', e => {
+    e.preventDefault();
+    showTab('#forgotTab');
+  });
+
+  document.getElementById('loginForm').addEventListener('submit', async e => {
+    e.preventDefault();
+    const btn = document.getElementById('loginBtn');
+    const err = document.getElementById('loginError');
+    btn.disabled = true; btn.textContent = 'Logging in…';
+    err.classList.add('d-none');
+    err.classList.remove('alert-warning');
+    err.classList.add('alert-danger');
+    try {
+      const res = await api('POST', '/auth/login', {
+        email: document.getElementById('loginEmail').value,
+        password: document.getElementById('loginPassword').value
+      });
+      saveAuth(res.data.token, res.data);
+      window.location.href = '/dashboard.html';
+    } catch (ex) {
+      err.textContent = ex.message;
+      if ((ex.message || '').includes('attempt(s) remaining')) {
+        err.classList.remove('alert-danger');
+        err.classList.add('alert-warning');
+      }
+      err.classList.remove('d-none');
+      btn.disabled = false; btn.textContent = 'Login';
+    }
+  });
+
+  document.getElementById('registerForm').addEventListener('submit', async e => {
+    e.preventDefault();
+    const btn = document.getElementById('regBtn');
+    const err = document.getElementById('regError');
+    btn.disabled = true; btn.textContent = 'Creating account…';
+    err.classList.add('d-none');
+    try {
+      const res = await api('POST', '/auth/register', {
+        fullName: document.getElementById('regName').value,
+        email: document.getElementById('regEmail').value,
+        password: document.getElementById('regPassword').value,
+        phoneNumber: document.getElementById('regPhone').value || null
+      });
+      saveAuth(res.data.token, res.data);
+      window.location.href = '/dashboard.html';
+    } catch (ex) {
+      err.textContent = ex.message;
+      err.classList.remove('d-none');
+      btn.disabled = false; btn.textContent = 'Create Donor Account';
+    }
+  });
+
+  document.getElementById('setupForm').addEventListener('submit', async e => {
+    e.preventDefault();
+    const btn = document.getElementById('setupBtn');
+    const err = document.getElementById('setupError');
+    btn.disabled = true; btn.textContent = 'Creating admin account…';
+    err.classList.add('d-none');
+    try {
+      const res = await api('POST', '/auth/setup', {
+        fullName: document.getElementById('setupName').value,
+        email: document.getElementById('setupEmail').value,
+        password: document.getElementById('setupPassword').value,
+        phoneNumber: document.getElementById('setupPhone').value || null
+      });
+      saveAuth(res.data.token, res.data);
+      window.location.href = '/dashboard.html';
+    } catch (ex) {
+      err.textContent = ex.message;
+      err.classList.remove('d-none');
+      btn.disabled = false; btn.textContent = 'Create Administrator Account';
+    }
+  });
+
+  document.getElementById('forgotForm').addEventListener('submit', async e => {
+    e.preventDefault();
+    const btn = document.getElementById('forgotBtn');
+    const msg = document.getElementById('forgotMsg');
+    const err = document.getElementById('forgotError');
+    btn.disabled = true; btn.textContent = 'Sending…';
+    msg.classList.add('d-none');
+    err.classList.add('d-none');
+    try {
+      await api('POST', '/auth/forgot-password', {
+        email: document.getElementById('forgotEmail').value
+      });
+      msg.textContent = 'If the email exists, a reset link has been sent.';
+      msg.classList.remove('d-none');
+      btn.disabled = false; btn.textContent = 'Send Reset Link';
+    } catch (ex) {
+      err.textContent = ex.message;
+      err.classList.remove('d-none');
+      btn.disabled = false; btn.textContent = 'Send Reset Link';
+    }
+  });
+
+  document.getElementById('resetForm').addEventListener('submit', async e => {
+    e.preventDefault();
+    const btn = document.getElementById('resetBtn');
+    const msg = document.getElementById('resetMsg');
+    const err = document.getElementById('resetError');
+    const password = document.getElementById('resetPassword').value;
+    const confirm = document.getElementById('resetPasswordConfirm').value;
+
+    msg.classList.add('d-none');
+    err.classList.add('d-none');
+
+    if (password !== confirm) {
+      err.textContent = 'Passwords do not match.';
+      err.classList.remove('d-none');
+      return;
+    }
+
+    btn.disabled = true; btn.textContent = 'Resetting…';
+    try {
+      await api('POST', '/auth/reset-password', {
+        token: document.getElementById('resetToken').value,
+        newPassword: password
+      });
+      msg.textContent = 'Password reset successful. You can now log in.';
+      msg.classList.remove('d-none');
+
+      history.replaceState({}, '', '/index.html');
+      setTimeout(() => showTab('#loginTab'), 900);
+      btn.disabled = false; btn.textContent = 'Reset Password';
+    } catch (ex) {
+      err.textContent = ex.message;
+      err.classList.remove('d-none');
+      btn.disabled = false; btn.textContent = 'Reset Password';
+    }
+  });
+</script>
+</body>
+</html>
