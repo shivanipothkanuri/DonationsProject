@@ -196,6 +196,18 @@
     }).join('');
   }
 
+  // Format a number as currency (e.g., 100000 -> $100,000.00)
+  function formatCurrency(value) {
+    if (!value) return '';
+    const num = parseFloat(value);
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    }).format(num);
+  }
+
   function openCreateModal() {
     document.getElementById('campaignId').value = '';
     document.getElementById('modalTitle').textContent = 'New Campaign';
@@ -211,6 +223,7 @@
     document.getElementById('fTitle').value = c.campaignTitle;
     document.getElementById('fDesc').value = c.description;
     document.getElementById('fGoal').value = c.goalAmount;
+    document.getElementById('fGoal').placeholder = formatCurrency(c.goalAmount);
     document.getElementById('fCategory').value = c.category || '';
     document.getElementById('fStart').value = c.startDate;
     document.getElementById('fEnd').value = c.endDate;
@@ -219,13 +232,22 @@
 
   async function saveCampaign() {
     const id = document.getElementById('campaignId').value;
+    const startDate = document.getElementById('fStart').value;
+    const endDate = document.getElementById('fEnd').value;
+    
+    // Validate end date is not before start date
+    if (startDate && endDate && endDate < startDate) {
+      showError('End date cannot be before start date.');
+      return;
+    }
+    
     const body = {
       campaignTitle: document.getElementById('fTitle').value,
       description: document.getElementById('fDesc').value,
       goalAmount: parseFloat(document.getElementById('fGoal').value),
       category: document.getElementById('fCategory').value || null,
-      startDate: document.getElementById('fStart').value,
-      endDate: document.getElementById('fEnd').value
+      startDate: startDate,
+      endDate: endDate
     };
     try {
       if (id) await api('PUT', `/campaigns/${id}`, body);
@@ -251,6 +273,7 @@
     document.getElementById('donateCampaignTitle').textContent = c ? c.campaignTitle : '';
     document.getElementById('donateType').value = 'MONETARY';
     document.getElementById('donateAmount').value = '';
+    document.getElementById('donateAmount').placeholder = 'e.g., $100,000.00';
     document.getElementById('donateItemQty').value = '';
     loadInKindOptions();
     toggleDonateFields();
