@@ -379,7 +379,7 @@
       const res = await api('/api/users', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ fullName, emailAddress, password, phoneNumber: phoneNumber || null, userRole })
+        body: JSON.stringify({ fullName, email: emailAddress, password, phoneNumber: phoneNumber || null, userRole })
       });
       const body = await res.json();
       if (res.ok) {
