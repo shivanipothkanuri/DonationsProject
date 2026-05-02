@@ -1,0 +1,14 @@
+Test Case ID,FR ID,Module,Scenario,Preconditions,Test Steps,Expected Result,Priority,Status
+TC-AUTH-001,FR-01,Auth,Donor registration,Public access available,POST /api/auth/register with valid payload,Account created and token returned,High,Ready
+TC-AUTH-002,FR-03,Auth,User login,Existing active account,POST /api/auth/login with credentials,Token returned and login success,High,Ready
+TC-USER-001,FR-14,Users,View own profile,Authenticated user,GET /api/users/me,Current profile returned,High,Ready
+TC-USER-002,FR-15,Users,Update own profile,Authenticated user,PUT /api/users/me with valid fields,Profile updated,High,Ready
+TC-CAMP-001,FR-30,Campaigns,Create campaign,Staff/Admin auth,POST /api/campaigns with valid payload,Campaign created,High,Ready
+TC-DON-001,FR-19,Donations,Submit donation,Donor auth and active campaign,POST /api/donations,Donation recorded,High,Ready
+TC-DON-002,FR-22,Donations,Download receipt,Authorized role and donation exists,GET /api/donations/{id}/receipt,PDF file download,Medium,Ready
+TC-BEN-001,FR-19,Beneficiaries,Register beneficiary,Staff/Admin auth,POST /api/beneficiaries,Beneficiary created,High,Ready
+TC-AID-001,FR-29,Aid Requests,Approve request,Case manager auth and pending request,PATCH /api/aid-requests/{id}/approve,Status changed to APPROVED,High,Ready
+TC-AID-002,FR-30,Aid Requests,Deny request,Case manager auth and pending request,PATCH /api/aid-requests/{id}/deny?justification=...,Status changed to DENIED,High,Ready
+TC-INV-001,FR-26,Inventory,Low stock report,Staff/Admin auth,GET /api/inventory/low-stock,Low stock list returned,Medium,Ready
+TC-RPT-001,FR-78,Reports,Campaign progress report,Authorized role,GET /api/reports/campaigns,Report payload returned,Medium,Ready
+TC-AUD-001,FR-90,Audit,View audit log,Admin auth,GET /api/audit,Paged audit entries returned,Medium,Ready
