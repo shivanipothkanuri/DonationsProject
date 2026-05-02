@@ -14,6 +14,10 @@ public interface AidRequestRepository extends JpaRepository<AidRequest, Integer>
 
     Page<AidRequest> findByRequestStatus(RequestStatus status, Pageable pageable);
 
+    Page<AidRequest> findByAidType(AidType aidType, Pageable pageable);
+
+    Page<AidRequest> findByRequestStatusAndAidType(RequestStatus status, AidType aidType, Pageable pageable);
+
     Page<AidRequest> findByBeneficiary_BeneficiaryId(Integer beneficiaryId, Pageable pageable);
 
     // Duplicate check: same beneficiary + aid type within 30 days (FR workflow rule)
@@ -32,4 +36,6 @@ public interface AidRequestRepository extends JpaRepository<AidRequest, Integer>
     List<AidRequest> findByRequestStatus(RequestStatus status);
 
     List<AidRequest> findByRequestStatusAndSubmissionDateBefore(RequestStatus status, LocalDateTime before);
+
+    List<AidRequest> findByBeneficiary_BeneficiaryIdOrderBySubmissionDateDesc(Integer beneficiaryId);
 }

@@ -1,13 +1,15 @@
 package org.charityaid.charity_aid.dto;
 
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+
 import org.charityaid.charity_aid.entity.Inventory;
 import org.charityaid.charity_aid.entity.ItemCategory;
 import org.charityaid.charity_aid.entity.UnitOfMeasure;
+
 import lombok.Builder;
 import lombok.Getter;
-
-import java.time.LocalDate;
-import java.time.LocalDateTime;
 
 @Getter
 @Builder
@@ -22,6 +24,11 @@ public class InventoryResponse {
     private UnitOfMeasure unitOfMeasure;
     private LocalDate expiryDate;
     private LocalDateTime lastUpdated;
+    private String supplierName;
+    private String supplierContact;
+    private String warehouseLocation;
+    private BigDecimal unitCost;
+    private BigDecimal totalValue;
 
     public static InventoryResponse from(Inventory i) {
         return InventoryResponse.builder()
@@ -34,6 +41,13 @@ public class InventoryResponse {
                 .unitOfMeasure(i.getUnitOfMeasure())
                 .expiryDate(i.getExpiryDate())
                 .lastUpdated(i.getLastUpdated())
+                .supplierName(i.getSupplierName())
+                .supplierContact(i.getSupplierContact())
+                .warehouseLocation(i.getWarehouseLocation())
+                .unitCost(i.getUnitCost())
+                .totalValue(i.getUnitCost() != null
+                    ? i.getUnitCost().multiply(BigDecimal.valueOf(i.getQuantityOnHand()))
+                    : null)
                 .build();
     }
 }

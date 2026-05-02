@@ -26,13 +26,16 @@ public class DonationResponse {
     private PaymentMethod paymentMethod;
     private LocalDateTime donationDate;
     private boolean receiptGenerated;
+    private boolean anonymous;
+    private String taxReferenceNumber;
+    private BigDecimal matchingAmount;
 
     public static DonationResponse from(Donation d) {
         return DonationResponse.builder()
                 .donationId(d.getDonationId())
                 .transactionId(d.getTransactionId())
                 .donorId(d.getDonor().getUserId())
-                .donorName(d.getDonor().getFullName())
+                .donorName(d.isAnonymous() ? "Anonymous" : d.getDonor().getFullName())
                 .campaignId(d.getCampaign().getCampaignId())
                 .campaignTitle(d.getCampaign().getCampaignTitle())
                 .donationType(d.getDonationType())
@@ -41,6 +44,9 @@ public class DonationResponse {
                 .paymentMethod(d.getPaymentMethod())
                 .donationDate(d.getDonationDate())
                 .receiptGenerated(d.isReceiptGenerated())
+                .anonymous(d.isAnonymous())
+                .taxReferenceNumber(d.getTaxReferenceNumber())
+                .matchingAmount(d.getMatchingAmount())
                 .build();
     }
 }

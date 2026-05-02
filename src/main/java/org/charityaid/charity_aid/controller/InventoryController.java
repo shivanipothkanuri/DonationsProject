@@ -15,11 +15,17 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.userdetails.UserDetails;
 
 import org.charityaid.charity_aid.dto.ApiResponse;
+import org.charityaid.charity_aid.dto.InventoryMovementRequest;
+import org.charityaid.charity_aid.dto.InventoryMovementResponse;
 import org.charityaid.charity_aid.dto.InventoryRequest;
 import org.charityaid.charity_aid.dto.InventoryResponse;
+import org.charityaid.charity_aid.entity.ItemCategory;
 import org.charityaid.charity_aid.service.InventoryService;
 
 import jakarta.validation.Valid;
@@ -67,5 +73,34 @@ public class InventoryController {
     public ResponseEntity<ApiResponse<Void>> deleteItem(@PathVariable Integer id) {
         inventoryService.deleteItem(id);
         return ResponseEntity.ok(ApiResponse.ok("Item deleted", null));
+    }
+
+    // FR-63: Inventory category management
+    @GetMapping("/categories")
+    public ResponseEntity<ApiResponse<List<String>>> getCategories() {
+        return ResponseEntity.ok(ApiResponse.ok(inventoryService.getCategories()));
+    }
+
+    // FR-66: Check-in / check-out movement log
+    @PostMapping("/{id}/movements")
+    public ResponseEntity<ApiResponse<InventoryMovementResponse>> recordMovement(
+            @PathVariable Integer id,
+            @Valid @RequestBody InventoryMovementRequest request,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ApiResponse.ok("Movement recorded",
+                        inventoryService.recordMovement(id, request, userDetails.getUsername())));
+    }
+
+    @GetMapping("/{id}/movements")
+    public ResponseEntity<ApiResponse<List<InventoryMovementResponse>>> getMovements(@PathVariable Integer id) {
+        return ResponseEntity.ok(ApiResponse.ok(inventoryService.getMovements(id)));
+    }
+
+    // FR-68: Inventory report endpoint
+    @GetMapping("/report")
+    public ResponseEntity<ApiResponse<java.util.Map<String, Object>>> inventoryReport(
+            @RequestParam(required = false) ItemCategory category) {
+        return ResponseEntity.ok(ApiResponse.ok(inventoryService.inventoryReport(category)));
     }
 }

@@ -6,6 +6,7 @@ import java.util.List;
 import org.charityaid.charity_aid.dto.ApiResponse;
 import org.charityaid.charity_aid.dto.DonationRequest;
 import org.charityaid.charity_aid.dto.DonationResponse;
+import org.charityaid.charity_aid.dto.DonorSummaryResponse;
 import org.charityaid.charity_aid.dto.RecurringDonationRequest;
 import org.charityaid.charity_aid.dto.RecurringDonationResponse;
 import org.charityaid.charity_aid.service.DonationService;
@@ -23,6 +24,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -100,6 +102,38 @@ public class DonationController {
     @PreAuthorize("hasAnyRole('STAFF','ADMINISTRATOR','CASE_MANAGER')")
     public ResponseEntity<ApiResponse<DonationResponse>> getDonation(@PathVariable Integer id) {
         return ResponseEntity.ok(ApiResponse.ok(donationService.getDonationById(id)));
+    }
+
+    // FR-38: Staff search donations by donor name
+    @GetMapping
+    @PreAuthorize("hasAnyRole('STAFF','ADMINISTRATOR','CASE_MANAGER')")
+    public ResponseEntity<ApiResponse<Page<DonationResponse>>> searchDonations(
+            @RequestParam(required = false) String donorName,
+            @PageableDefault(size = 10) Pageable pageable) {
+        return ResponseEntity.ok(ApiResponse.ok(donationService.searchDonations(donorName, pageable)));
+    }
+
+    // FR-50: Donor profile snapshot
+    @GetMapping("/my/profile")
+    @PreAuthorize("hasRole('DONOR')")
+    public ResponseEntity<ApiResponse<org.charityaid.charity_aid.dto.UserResponse>> myProfile(
+            @AuthenticationPrincipal UserDetails userDetails) {
+        return ResponseEntity.ok(ApiResponse.ok(donationService.getDonorProfile(userDetails.getUsername())));
+    }
+
+    // FR-51: Donor giving summary
+    @GetMapping("/my/summary")
+    @PreAuthorize("hasRole('DONOR')")
+    public ResponseEntity<ApiResponse<DonorSummaryResponse>> mySummary(
+            @AuthenticationPrincipal UserDetails userDetails) {
+        return ResponseEntity.ok(ApiResponse.ok(donationService.getDonorSummary(userDetails.getUsername())));
+    }
+
+    // FR-54: Apply matching for donation
+    @PatchMapping("/{id}/match")
+    @PreAuthorize("hasAnyRole('STAFF','ADMINISTRATOR')")
+    public ResponseEntity<ApiResponse<DonationResponse>> applyMatching(@PathVariable Integer id) {
+        return ResponseEntity.ok(ApiResponse.ok("Matching applied", donationService.applyMatching(id)));
     }
 
     // FR-22: Download PDF receipt — donor gets own, staff/admin get any

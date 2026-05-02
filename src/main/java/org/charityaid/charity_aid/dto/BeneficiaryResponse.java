@@ -1,11 +1,13 @@
 package org.charityaid.charity_aid.dto;
 
+import java.time.LocalDateTime;
+
 import org.charityaid.charity_aid.entity.Beneficiary;
 import org.charityaid.charity_aid.entity.BeneficiaryStatus;
+import org.charityaid.charity_aid.entity.NeedsCategory;
+
 import lombok.Builder;
 import lombok.Getter;
-
-import java.time.LocalDateTime;
 
 @Getter
 @Builder
@@ -16,6 +18,9 @@ public class BeneficiaryResponse {
     private String emailAddress;
     private String phoneNumber;
     private String residentialAddress;
+    private String serviceZone;
+    private Integer householdSize;
+    private NeedsCategory needsCategory;
     private BeneficiaryStatus beneficiaryStatus;
     private Integer registeredById;
     private String registeredByName;
@@ -28,6 +33,9 @@ public class BeneficiaryResponse {
                 .emailAddress(b.getEmailAddress())
                 .phoneNumber(b.getPhoneNumber())
                 .residentialAddress(b.getResidentialAddress())
+                .serviceZone(b.getServiceZone())
+                .householdSize(b.getHouseholdSize())
+                .needsCategory(b.getNeedsCategory())
                 .beneficiaryStatus(b.getBeneficiaryStatus())
                 .registeredById(b.getRegisteredBy().getUserId())
                 .registeredByName(b.getRegisteredBy().getFullName())

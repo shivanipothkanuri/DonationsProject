@@ -5,6 +5,7 @@ import java.time.LocalDateTime;
 
 import org.charityaid.charity_aid.entity.AidRequest;
 import org.charityaid.charity_aid.entity.AidType;
+import org.charityaid.charity_aid.entity.RequestPriority;
 import org.charityaid.charity_aid.entity.RequestStatus;
 
 import lombok.Builder;
@@ -22,6 +23,12 @@ public class AidRequestResponse {
     private BigDecimal requestedAmount;
     private String requestedItem;
     private String supportingDocumentation;
+    private String supportingDocumentPath;
+    private RequestPriority priority;
+    private Integer assignedCaseManagerId;
+    private String assignedCaseManagerName;
+    private LocalDateTime slaDeadline;
+    private boolean slaBreached;
     private RequestStatus requestStatus;
     private String justificationNotes;
     private LocalDateTime decisionTimestamp;
@@ -42,6 +49,12 @@ public class AidRequestResponse {
                 .requestedAmount(r.getRequestedAmount())
                 .requestedItem(r.getRequestedItem())
                 .supportingDocumentation(r.getSupportingDocumentation())
+                .supportingDocumentPath(r.getSupportingDocumentPath())
+                .priority(r.getPriority())
+                .assignedCaseManagerId(r.getAssignedCaseManager() != null ? r.getAssignedCaseManager().getUserId() : null)
+                .assignedCaseManagerName(r.getAssignedCaseManager() != null ? r.getAssignedCaseManager().getFullName() : null)
+                .slaDeadline(r.getSlaDeadline())
+                .slaBreached(r.isSlaBreached())
                 .requestStatus(r.getRequestStatus())
                 .justificationNotes(r.getJustificationNotes())
                 .decisionTimestamp(r.getDecisionTimestamp())

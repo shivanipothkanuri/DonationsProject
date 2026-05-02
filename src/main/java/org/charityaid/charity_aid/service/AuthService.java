@@ -61,6 +61,13 @@ public class AuthService {
 
         user = userRepository.save(user);
 
+        if (user.isNotificationsEnabled()) {
+            notificationService.sendSystemNotification(
+                user.getEmailAddress(),
+                "Welcome to Charity-AID",
+                "Your donor account has been created successfully.");
+        }
+
         String token = jwtUtil.generateToken(user.getEmailAddress(), user.getUserRole().name());
         return buildAuthResponse(user, token);
     }
@@ -90,6 +97,13 @@ public class AuthService {
                 .build();
 
         admin = userRepository.save(admin);
+
+        if (admin.isNotificationsEnabled()) {
+            notificationService.sendSystemNotification(
+                admin.getEmailAddress(),
+                "Administrator account created",
+                "Your administrator account has been set up successfully.");
+        }
 
         String token = jwtUtil.generateToken(admin.getEmailAddress(), admin.getUserRole().name());
         return buildAuthResponse(admin, token);

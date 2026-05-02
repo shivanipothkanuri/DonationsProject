@@ -173,6 +173,11 @@ public class NotificationService {
             "threshold", safe(threshold)));
     }
 
+        @Async
+        public void sendSystemNotification(String toEmail, String subject, String message) {
+            send(toEmail, subject, message);
+        }
+
     // ── private helper ────────────────────────────────────────────────────────
 
         private void sendTemplated(String templateKey, String to, Map<String, String> variables) {

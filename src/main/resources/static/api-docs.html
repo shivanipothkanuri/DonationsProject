@@ -39,6 +39,18 @@
     Obtain a token from <code>POST /api/auth/login</code> or <code>POST /api/auth/setup</code>.
   </div>
 
+  <div class="alert alert-success">
+    <strong>Recently Added Endpoints:</strong>
+    <div class="small mt-2">
+      <div><code>GET /api/donations?donorName=</code> (FR-38 donor search), <code>GET /api/donations/my/profile</code> (FR-50), <code>GET /api/donations/my/summary</code> (FR-51), <code>PATCH /api/donations/{id}/match</code> (FR-54)</div>
+      <div><code>POST /api/aid-requests/{id}/comments</code> and <code>GET /api/aid-requests/{id}/comments</code> (FR-56), <code>PATCH /api/aid-requests/batch/process</code> (FR-59), <code>POST /api/aid-requests/{id}/documents</code> (FR-48)</div>
+      <div><code>GET /api/beneficiaries/{id}/history</code> (FR-45), <code>GET /api/campaigns/{id}/leaderboard</code> (FR-69), <code>GET /api/campaigns/{id}/share-link</code> (FR-71), <code>GET /api/campaigns/{id}/impact</code> (FR-73)</div>
+      <div><code>GET /api/inventory/categories</code> (FR-63), <code>POST /api/inventory/{id}/movements</code> (FR-66), <code>GET /api/inventory/report</code> (FR-68)</div>
+      <div><code>GET /api/system/health</code> (FR-89), <code>GET/PATCH /api/system/config</code> (FR-94), <code>GET/PATCH /api/system/permissions</code> (FR-91), request rate limiting on all <code>/api/*</code> routes (FR-93)</div>
+      <div><code>GET /api/users/me/export</code> (FR-92)</div>
+    </div>
+  </div>
+
   <!-- Role legend -->
   <div class="card mb-4">
     <div class="card-header fw-bold">Role Legend</div>

@@ -2,10 +2,14 @@ package org.charityaid.charity_aid.controller;
 
 import java.util.List;
 
+import org.charityaid.charity_aid.dto.AidRequestBatchProcessRequest;
+import org.charityaid.charity_aid.dto.AidRequestCommentRequest;
+import org.charityaid.charity_aid.dto.AidRequestCommentResponse;
 import org.charityaid.charity_aid.dto.AidRequestRequest;
 import org.charityaid.charity_aid.dto.AidRequestResponse;
 import org.charityaid.charity_aid.dto.AidRequestStatusHistoryResponse;
 import org.charityaid.charity_aid.dto.ApiResponse;
+import org.charityaid.charity_aid.entity.AidType;
 import org.charityaid.charity_aid.entity.RequestStatus;
 import org.charityaid.charity_aid.service.AidRequestService;
 import org.springframework.data.domain.Page;
@@ -25,6 +29,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -41,9 +46,10 @@ public class AidRequestController {
     @PreAuthorize("hasAnyRole('CASE_MANAGER','ADMINISTRATOR','STAFF')")
     public ResponseEntity<ApiResponse<Page<AidRequestResponse>>> getRequests(
             @RequestParam(required = false) RequestStatus status,
+            @RequestParam(required = false) AidType aidType,
             @PageableDefault(size = 10) Pageable pageable) {
-        if (status != null) {
-            return ResponseEntity.ok(ApiResponse.ok(aidRequestService.getRequestsByStatus(status, pageable)));
+        if (status != null || aidType != null) {
+            return ResponseEntity.ok(ApiResponse.ok(aidRequestService.getRequestsFiltered(status, aidType, pageable)));
         }
         return ResponseEntity.ok(ApiResponse.ok(aidRequestService.getAllRequests(pageable)));
     }
@@ -130,5 +136,41 @@ public class AidRequestController {
             @AuthenticationPrincipal UserDetails userDetails) {
         return ResponseEntity.ok(ApiResponse.ok("Request escalated to administrator",
                 aidRequestService.escalateRequest(id, userDetails.getUsername())));
+    }
+
+    // FR-56: Comment thread on aid request
+    @PostMapping("/{id}/comments")
+    @PreAuthorize("hasAnyRole('CASE_MANAGER','ADMINISTRATOR','STAFF')")
+    public ResponseEntity<ApiResponse<AidRequestCommentResponse>> addComment(
+            @PathVariable Integer id,
+            @Valid @RequestBody AidRequestCommentRequest request,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ApiResponse.ok("Comment added", aidRequestService.addComment(id, request, userDetails.getUsername())));
+    }
+
+    @GetMapping("/{id}/comments")
+    @PreAuthorize("hasAnyRole('CASE_MANAGER','ADMINISTRATOR','STAFF')")
+    public ResponseEntity<ApiResponse<List<AidRequestCommentResponse>>> getComments(@PathVariable Integer id) {
+        return ResponseEntity.ok(ApiResponse.ok(aidRequestService.getComments(id)));
+    }
+
+    // FR-59: Batch approve/deny pending requests
+    @PatchMapping("/batch/process")
+    @PreAuthorize("hasAnyRole('CASE_MANAGER','ADMINISTRATOR')")
+    public ResponseEntity<ApiResponse<List<AidRequestResponse>>> batchProcess(
+            @Valid @RequestBody AidRequestBatchProcessRequest request,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        return ResponseEntity.ok(ApiResponse.ok("Batch processed",
+                aidRequestService.batchProcess(request, userDetails.getUsername())));
+    }
+
+    // FR-48: Upload supporting document
+    @PostMapping("/{id}/documents")
+    @PreAuthorize("hasAnyRole('STAFF','ADMINISTRATOR')")
+    public ResponseEntity<ApiResponse<AidRequestResponse>> uploadSupportingDocument(
+            @PathVariable Integer id,
+            @RequestParam("file") MultipartFile file) {
+        return ResponseEntity.ok(ApiResponse.ok("Document uploaded", aidRequestService.uploadSupportingDocument(id, file)));
     }
 }

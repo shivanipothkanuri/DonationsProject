@@ -55,6 +55,21 @@ public class AidRequest {
     @Column(name = "SUPPORTING_DOCUMENTATION", length = 500)
     private String supportingDocumentation;
 
+    // FR-48: Uploaded supporting file path
+    @Column(name = "SUPPORTING_DOCUMENT_PATH", length = 600)
+    private String supportingDocumentPath;
+
+    // FR-47: Request triage priority
+    @Enumerated(EnumType.STRING)
+    @Column(name = "PRIORITY", length = 10)
+    @Builder.Default
+    private RequestPriority priority = RequestPriority.MEDIUM;
+
+    // FR-57: Assigned case manager (set before review)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "ASSIGNED_CASE_MANAGER_ID")
+    private User assignedCaseManager;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "REQUEST_STATUS", nullable = false, length = 20)
     @Builder.Default
@@ -82,6 +97,14 @@ public class AidRequest {
 
     @Column(name = "LAST_REMINDER_SENT_AT")
     private LocalDateTime lastReminderSentAt;
+
+    // FR-58: SLA deadline and breach flag
+    @Column(name = "SLA_DEADLINE")
+    private LocalDateTime slaDeadline;
+
+    @Column(name = "SLA_BREACHED", nullable = false)
+    @Builder.Default
+    private boolean slaBreached = false;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "FULFILLED_BY")

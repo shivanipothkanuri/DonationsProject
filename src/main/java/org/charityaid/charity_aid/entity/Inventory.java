@@ -1,5 +1,6 @@
 package org.charityaid.charity_aid.entity;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
@@ -49,6 +50,21 @@ public class Inventory {
     @Enumerated(EnumType.STRING)
     @Column(name = "UNIT_OF_MEASURE", nullable = false, length = 30)
     private UnitOfMeasure unitOfMeasure;
+
+    // FR-65: Supplier metadata
+    @Column(name = "SUPPLIER_NAME", length = 120)
+    private String supplierName;
+
+    @Column(name = "SUPPLIER_CONTACT", length = 120)
+    private String supplierContact;
+
+    // FR-75: Multi-location inventory
+    @Column(name = "WAREHOUSE_LOCATION", length = 100)
+    private String warehouseLocation;
+
+    // FR-76: Inventory valuation
+    @Column(name = "UNIT_COST", precision = 10, scale = 2)
+    private BigDecimal unitCost;
 
     @Column(name = "EXPIRY_DATE")
     private LocalDate expiryDate;

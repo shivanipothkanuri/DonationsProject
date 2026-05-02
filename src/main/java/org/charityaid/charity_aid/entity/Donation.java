@@ -68,6 +68,19 @@ public class Donation {
     @Builder.Default
     private boolean receiptGenerated = false;
 
+    // FR-53: Donor may choose to donate anonymously
+    @Column(name = "ANONYMOUS", nullable = false)
+    @Builder.Default
+    private boolean anonymous = false;
+
+    // FR-52: Optional tax reference number included on receipt
+    @Column(name = "TAX_REFERENCE_NUMBER", length = 80)
+    private String taxReferenceNumber;
+
+    // FR-54: Optional matched amount
+    @Column(name = "MATCHING_AMOUNT", precision = 10, scale = 2)
+    private BigDecimal matchingAmount;
+
     @PrePersist
     protected void onCreate() {
         donationDate = LocalDateTime.now();

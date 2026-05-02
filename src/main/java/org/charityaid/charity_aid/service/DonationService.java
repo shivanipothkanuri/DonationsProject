@@ -7,14 +7,18 @@ import java.util.List;
 
 import org.charityaid.charity_aid.dto.DonationRequest;
 import org.charityaid.charity_aid.dto.DonationResponse;
+import org.charityaid.charity_aid.dto.DonorSummaryResponse;
 import org.charityaid.charity_aid.dto.RecurringDonationRequest;
 import org.charityaid.charity_aid.dto.RecurringDonationResponse;
+import org.charityaid.charity_aid.dto.UserResponse;
 import org.charityaid.charity_aid.entity.AccountStatus;
 import org.charityaid.charity_aid.entity.Campaign;
 import org.charityaid.charity_aid.entity.CampaignStatus;
 import org.charityaid.charity_aid.entity.Donation;
 import org.charityaid.charity_aid.entity.DonationType;
 import org.charityaid.charity_aid.entity.Inventory;
+import org.charityaid.charity_aid.entity.InventoryMovement;
+import org.charityaid.charity_aid.entity.InventoryMovementType;
 import org.charityaid.charity_aid.entity.PaymentMethod;
 import org.charityaid.charity_aid.entity.RecurringDonation;
 import org.charityaid.charity_aid.entity.RecurringDonationFrequency;
@@ -22,6 +26,7 @@ import org.charityaid.charity_aid.entity.User;
 import org.charityaid.charity_aid.entity.UserRole;
 import org.charityaid.charity_aid.repository.CampaignRepository;
 import org.charityaid.charity_aid.repository.DonationRepository;
+import org.charityaid.charity_aid.repository.InventoryMovementRepository;
 import org.charityaid.charity_aid.repository.InventoryRepository;
 import org.charityaid.charity_aid.repository.RecurringDonationRepository;
 import org.charityaid.charity_aid.repository.UserRepository;
@@ -45,6 +50,7 @@ public class DonationService {
     private final CampaignRepository campaignRepository;
     private final UserRepository userRepository;
     private final InventoryRepository inventoryRepository;
+    private final InventoryMovementRepository inventoryMovementRepository;
     private final RecurringDonationRepository recurringDonationRepository;
     private final AuditService auditService;
     private final NotificationService notificationService;
@@ -99,9 +105,32 @@ public class DonationService {
                     request.getDonationAmount(),
                     storedItemDescription,
                     request.getPaymentMethod(),
+                    request.isAnonymous(),
+                    request.getTaxReferenceNumber(),
                     donorEmail,
                     true,
                     false);
+
+                // FR-67: Link in-kind donation to inventory movement
+                if (request.getDonationType() == DonationType.IN_KIND && request.getItemDescription() != null) {
+                    Inventory item = inventoryRepository.findAllByOrderByItemNameAsc().stream()
+                            .filter(i -> i.getItemName().equalsIgnoreCase(request.getItemDescription().trim()))
+                            .findFirst()
+                            .orElse(null);
+                    if (item != null) {
+                        int qty = request.getItemQuantity() != null ? request.getItemQuantity() : 1;
+                        item.setQuantityOnHand(item.getQuantityOnHand() + qty);
+                        inventoryRepository.save(item);
+                        inventoryMovementRepository.save(InventoryMovement.builder()
+                                .inventory(item)
+                                .movementType(InventoryMovementType.CHECK_IN)
+                                .quantity(qty)
+                                .reference("In-kind donation: " + donation.getTransactionId())
+                                .donationId(donation.getDonationId())
+                                .actor(donor)
+                                .build());
+                    }
+                }
 
                 return DonationResponse.from(donation);
     }
@@ -190,6 +219,8 @@ public class DonationService {
                         schedule.getDonationAmount(),
                         null,
                         schedule.getPaymentMethod(),
+                        false,
+                        null,
                         schedule.getDonor().getEmailAddress(),
                         true,
                         true);
@@ -227,6 +258,49 @@ public class DonationService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Donation not found")));
     }
 
+    // FR-38
+    public Page<DonationResponse> searchDonations(String donorName, Pageable pageable) {
+        if (donorName != null && !donorName.isBlank()) {
+            return donationRepository.findByDonor_FullNameContainingIgnoreCase(donorName, pageable)
+                    .map(DonationResponse::from);
+        }
+        return donationRepository.findAll(pageable).map(DonationResponse::from);
+    }
+
+    // FR-50
+    public UserResponse getDonorProfile(String donorEmail) {
+        User donor = userRepository.findByEmailAddress(donorEmail)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+        return UserResponse.from(donor);
+    }
+
+    // FR-51
+    public DonorSummaryResponse getDonorSummary(String donorEmail) {
+        User donor = userRepository.findByEmailAddress(donorEmail)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+        return DonorSummaryResponse.builder()
+                .donorId(donor.getUserId())
+                .donorName(donor.getFullName())
+                .donationCount(donationRepository.countByDonor_UserId(donor.getUserId()))
+                .campaignsSupported(donationRepository.distinctCampaignCountByDonorId(donor.getUserId()))
+                .totalMonetaryDonated(donationRepository.totalMonetaryByDonorId(donor.getUserId()))
+                .build();
+    }
+
+    // FR-54
+    @Transactional
+    public DonationResponse applyMatching(Integer donationId) {
+        Donation donation = donationRepository.findById(donationId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Donation not found"));
+        if (donation.getDonationType() != DonationType.MONETARY || donation.getDonationAmount() == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Only monetary donations can be matched");
+        }
+        donation.setMatchingAmount(donation.getDonationAmount());
+        donationRepository.save(donation);
+        auditService.record("DONATION", donationId, "MATCH", null, "Donation matching applied 1:1");
+        return DonationResponse.from(donation);
+    }
+
     // FR-22: Generate PDF receipt bytes for a donation
     @Transactional
     public byte[] generateReceiptBytes(Integer donationId, String requestorEmail) {
@@ -256,7 +330,9 @@ public class DonationService {
 
     private Donation createDonation(User donor, Campaign campaign, DonationType donationType,
                                     BigDecimal donationAmount, String itemDescription,
-                                    PaymentMethod paymentMethod, String actorEmail,
+                                    PaymentMethod paymentMethod, boolean anonymous,
+                        String taxReferenceNumber,
+                                    String actorEmail,
                                     boolean sendConfirmation, boolean recurring) {
         Donation donation = Donation.builder()
                 .donor(donor)
@@ -265,6 +341,8 @@ public class DonationService {
                 .donationAmount(donationAmount)
                 .itemDescription(itemDescription)
                 .paymentMethod(paymentMethod)
+                .anonymous(anonymous)
+            .taxReferenceNumber(taxReferenceNumber)
                 .build();
 
         donation = donationRepository.save(donation);

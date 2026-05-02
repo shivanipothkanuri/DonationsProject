@@ -68,6 +68,11 @@ public class User {
     @Column(name = "MFA_SECRET", length = 100)
     private String mfaSecret;
 
+    // FR-16: User notification preference
+    @Column(name = "NOTIFICATIONS_ENABLED", nullable = false)
+    @Builder.Default
+    private boolean notificationsEnabled = true;
+
     @PrePersist
     protected void onCreate() {
         createdDate = LocalDateTime.now();
@@ -75,5 +80,8 @@ public class User {
             accountStatus = AccountStatus.ACTIVE;
         }
         failedLoginCount = 0;
+        if (!notificationsEnabled) {
+            notificationsEnabled = true;
+        }
     }
 }

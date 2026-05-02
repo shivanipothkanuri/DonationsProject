@@ -46,6 +46,19 @@ public class Beneficiary {
     @Column(name = "RESIDENTIAL_ADDRESS", nullable = false, length = 255)
     private String residentialAddress;
 
+    // FR-44: Service zone / location tag
+    @Column(name = "SERVICE_ZONE", length = 100)
+    private String serviceZone;
+
+    // FR-43: Household composition
+    @Column(name = "HOUSEHOLD_SIZE")
+    private Integer householdSize;
+
+    // FR-42: Primary needs category
+    @Enumerated(EnumType.STRING)
+    @Column(name = "NEEDS_CATEGORY", length = 20)
+    private NeedsCategory needsCategory;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "BENEFICIARY_STATUS", nullable = false, length = 20)
     @Builder.Default

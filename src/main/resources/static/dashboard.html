@@ -53,6 +53,10 @@
       color: 'dark', icon: '⚙️', title: 'User Management',
       text: 'Create accounts, assign roles, unlock users.',
       link: '/users.html', btn: 'Manage Users' },
+    { role: ['ADMINISTRATOR','LEADERSHIP'],
+      color: 'outline-dark', icon: '🩺', title: 'System Health & Config',
+      text: 'View /api/system/health, role permissions, and configurable system settings.',
+      link: '/api-docs.html', btn: 'Open API Docs' },
   ];
 
   const cards = allCards.filter(c => c.role.includes(role));

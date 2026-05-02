@@ -35,4 +35,9 @@ public class DonationRequest {
     private Integer itemQuantity;
 
     private PaymentMethod paymentMethod;
+
+    // FR-53: Allow donor to remain anonymous on leaderboards and receipts
+    private boolean anonymous;
+
+    private String taxReferenceNumber;
 }

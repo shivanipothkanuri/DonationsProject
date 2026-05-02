@@ -47,6 +47,9 @@ public class UserService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
         user.setFullName(request.getFullName());
         user.setPhoneNumber(request.getPhoneNumber());
+        if (request.getNotificationsEnabled() != null) {
+            user.setNotificationsEnabled(request.getNotificationsEnabled());
+        }
         UserResponse response = UserResponse.from(userRepository.save(user));
         auditService.record("USER", user.getUserId(), "UPDATE", email, "Profile updated");
         return response;
@@ -136,6 +139,30 @@ public class UserService {
         }
         user.setPasswordHash(passwordEncoder.encode(request.getNewPassword()));
         userRepository.save(user);
+    }
+
+    // FR-92: Export a user's own data as JSON
+    public String exportMyData(String email) {
+        User user = userRepository.findByEmailAddress(email)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+        return "{" +
+                "\"userId\":" + user.getUserId() + "," +
+                "\"fullName\":\"" + escape(user.getFullName()) + "\"," +
+                "\"emailAddress\":\"" + escape(user.getEmailAddress()) + "\"," +
+                "\"phoneNumber\":\"" + escape(user.getPhoneNumber()) + "\"," +
+                "\"userRole\":\"" + user.getUserRole().name() + "\"," +
+                "\"accountStatus\":\"" + user.getAccountStatus().name() + "\"," +
+                "\"createdDate\":\"" + user.getCreatedDate() + "\"," +
+                "\"lastLogin\":\"" + user.getLastLogin() + "\"," +
+                "\"notificationsEnabled\":" + user.isNotificationsEnabled() +
+                "}";
+    }
+
+    private String escape(String value) {
+        if (value == null) {
+            return "";
+        }
+        return value.replace("\\", "\\\\").replace("\"", "\\\"");
     }
 
     private User findOrThrow(Integer id) {

@@ -3,6 +3,7 @@ package org.charityaid.charity_aid.dto;
 import java.math.BigDecimal;
 
 import org.charityaid.charity_aid.entity.AidType;
+import org.charityaid.charity_aid.entity.RequestPriority;
 
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotBlank;
@@ -34,4 +35,10 @@ public class AidRequestRequest {
 
     @Size(max = 500, message = "Supporting documentation reference must be at most 500 characters")
     private String supportingDocumentation;
+
+    // FR-47: Priority level (defaults to MEDIUM if not provided)
+    private RequestPriority priority;
+
+    // FR-57: Optionally assign a case manager at submission time
+    private Integer assignedCaseManagerId;
 }

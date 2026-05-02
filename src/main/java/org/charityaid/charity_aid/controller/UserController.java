@@ -1,9 +1,17 @@
 package org.charityaid.charity_aid.controller;
 
+import org.charityaid.charity_aid.dto.ApiResponse;
+import org.charityaid.charity_aid.dto.ChangePasswordRequest;
+import org.charityaid.charity_aid.dto.CreateUserRequest;
+import org.charityaid.charity_aid.dto.UpdateProfileRequest;
+import org.charityaid.charity_aid.dto.UserResponse;
+import org.charityaid.charity_aid.entity.UserRole;
+import org.charityaid.charity_aid.service.UserService;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -17,14 +25,6 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-
-import org.charityaid.charity_aid.dto.ApiResponse;
-import org.charityaid.charity_aid.dto.ChangePasswordRequest;
-import org.charityaid.charity_aid.dto.CreateUserRequest;
-import org.charityaid.charity_aid.dto.UpdateProfileRequest;
-import org.charityaid.charity_aid.dto.UserResponse;
-import org.charityaid.charity_aid.entity.UserRole;
-import org.charityaid.charity_aid.service.UserService;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -59,6 +59,13 @@ public class UserController {
             @AuthenticationPrincipal UserDetails userDetails) {
         userService.changePassword(userDetails.getUsername(), request);
         return ResponseEntity.ok(ApiResponse.ok("Password changed successfully", null));
+    }
+
+    // FR-92: User data export
+    @GetMapping(value = "/me/export", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<String> exportMyData(
+            @AuthenticationPrincipal UserDetails userDetails) {
+        return ResponseEntity.ok(userService.exportMyData(userDetails.getUsername()));
     }
 
     // FR-34 (admin only): List all users

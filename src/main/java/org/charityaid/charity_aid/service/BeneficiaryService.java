@@ -1,10 +1,13 @@
 package org.charityaid.charity_aid.service;
 
+import org.charityaid.charity_aid.dto.AidRequestResponse;
 import org.charityaid.charity_aid.dto.BeneficiaryRequest;
 import org.charityaid.charity_aid.dto.BeneficiaryResponse;
 import org.charityaid.charity_aid.entity.Beneficiary;
 import org.charityaid.charity_aid.entity.BeneficiaryStatus;
 import org.charityaid.charity_aid.entity.User;
+import org.charityaid.charity_aid.entity.UserRole;
+import org.charityaid.charity_aid.repository.AidRequestRepository;
 import org.charityaid.charity_aid.repository.BeneficiaryRepository;
 import org.charityaid.charity_aid.repository.UserRepository;
 import org.springframework.data.domain.Page;
@@ -23,7 +26,9 @@ public class BeneficiaryService {
 
     private final BeneficiaryRepository beneficiaryRepository;
     private final UserRepository userRepository;
+    private final AidRequestRepository aidRequestRepository;
     private final AuditService auditService;
+    private final NotificationService notificationService;
 
     public Page<BeneficiaryResponse> getAllBeneficiaries(String search, Pageable pageable) {
         if (search != null && !search.isBlank()) {
@@ -54,6 +59,9 @@ public class BeneficiaryService {
                 .emailAddress(request.getEmailAddress())
                 .phoneNumber(request.getPhoneNumber())
                 .residentialAddress(request.getResidentialAddress())
+            .serviceZone(request.getServiceZone())
+                .householdSize(request.getHouseholdSize())
+                .needsCategory(request.getNeedsCategory())
                 .beneficiaryStatus(BeneficiaryStatus.ACTIVE)
                 .registeredBy(staff)
                 .build();
@@ -61,6 +69,7 @@ public class BeneficiaryService {
         BeneficiaryResponse response = BeneficiaryResponse.from(beneficiaryRepository.save(beneficiary));
         auditService.record("BENEFICIARY", response.getBeneficiaryId(), "CREATE", staffEmail,
                 "Beneficiary registered: " + request.getFullName());
+        notifyStaff("New beneficiary registered: " + request.getFullName());
         return response;
     }
 
@@ -73,9 +82,13 @@ public class BeneficiaryService {
         b.setEmailAddress(request.getEmailAddress());
         b.setPhoneNumber(request.getPhoneNumber());
         b.setResidentialAddress(request.getResidentialAddress());
+        b.setServiceZone(request.getServiceZone());
+        b.setHouseholdSize(request.getHouseholdSize());
+        b.setNeedsCategory(request.getNeedsCategory());
 
         BeneficiaryResponse response = BeneficiaryResponse.from(beneficiaryRepository.save(b));
         auditService.record("BENEFICIARY", id, "UPDATE", null, "Beneficiary contact info updated");
+        notifyStaff("Beneficiary updated: " + b.getFullName());
         return response;
     }
 
@@ -85,7 +98,25 @@ public class BeneficiaryService {
         b.setBeneficiaryStatus(BeneficiaryStatus.INACTIVE);
         BeneficiaryResponse response = BeneficiaryResponse.from(beneficiaryRepository.save(b));
         auditService.record("BENEFICIARY", id, "UPDATE", null, "Beneficiary deactivated");
+        notifyStaff("Beneficiary deactivated: " + b.getFullName());
         return response;
+    }
+
+    public java.util.List<AidRequestResponse> getBeneficiaryHistory(Integer beneficiaryId) {
+        findOrThrow(beneficiaryId);
+        return aidRequestRepository.findByBeneficiary_BeneficiaryIdOrderBySubmissionDateDesc(beneficiaryId)
+                .stream()
+                .map(AidRequestResponse::from)
+                .toList();
+    }
+
+    private void notifyStaff(String message) {
+        userRepository.findByUserRoleAndAccountStatus(UserRole.STAFF, org.charityaid.charity_aid.entity.AccountStatus.ACTIVE)
+                .forEach(staff -> {
+                    if (staff.isNotificationsEnabled()) {
+                        notificationService.sendBulkCampaignUpdate(staff.getEmailAddress(), staff.getFullName(), "Beneficiary", message);
+                    }
+                });
     }
 
     private Beneficiary findOrThrow(Integer id) {

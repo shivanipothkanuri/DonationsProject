@@ -4,6 +4,7 @@ import org.charityaid.charity_aid.dto.ApiResponse;
 import org.charityaid.charity_aid.dto.BulkCampaignUpdateRequest;
 import org.charityaid.charity_aid.dto.CampaignRequest;
 import org.charityaid.charity_aid.dto.CampaignResponse;
+import org.charityaid.charity_aid.entity.CampaignCategory;
 import org.charityaid.charity_aid.service.CampaignService;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -21,6 +22,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import jakarta.validation.Valid;
@@ -33,10 +35,14 @@ public class CampaignController {
 
     private final CampaignService campaignService;
 
-    // FR-17: Donors browse active campaigns (all authenticated users)
+    // FR-17 / FR-36: Donors browse active campaigns, optionally filtered by category
     @GetMapping("/active")
     public ResponseEntity<ApiResponse<Page<CampaignResponse>>> getActiveCampaigns(
+            @RequestParam(required = false) CampaignCategory category,
             @PageableDefault(size = 10) Pageable pageable) {
+        if (category != null) {
+            return ResponseEntity.ok(ApiResponse.ok(campaignService.getActiveCampaignsByCategory(category, pageable)));
+        }
         return ResponseEntity.ok(ApiResponse.ok(campaignService.getActiveCampaigns(pageable)));
     }
 
@@ -94,5 +100,23 @@ public class CampaignController {
             @AuthenticationPrincipal UserDetails userDetails) {
         campaignService.sendBulkCampaignUpdate(id, request, userDetails.getUsername());
         return ResponseEntity.ok(ApiResponse.ok("Campaign update emails sent", null));
+    }
+
+    // FR-69
+    @GetMapping("/{id}/leaderboard")
+    public ResponseEntity<ApiResponse<java.util.List<java.util.Map<String, Object>>>> leaderboard(@PathVariable Integer id) {
+        return ResponseEntity.ok(ApiResponse.ok(campaignService.getCampaignLeaderboard(id)));
+    }
+
+    // FR-71
+    @GetMapping("/{id}/share-link")
+    public ResponseEntity<ApiResponse<String>> shareLink(@PathVariable Integer id) {
+        return ResponseEntity.ok(ApiResponse.ok(campaignService.getShareLink(id)));
+    }
+
+    // FR-73
+    @GetMapping("/{id}/impact")
+    public ResponseEntity<ApiResponse<java.util.Map<String, Object>>> impact(@PathVariable Integer id) {
+        return ResponseEntity.ok(ApiResponse.ok(campaignService.getImpactMetrics(id)));
     }
 }

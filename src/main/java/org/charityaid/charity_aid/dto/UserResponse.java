@@ -22,6 +22,7 @@ public class UserResponse {
     private LocalDateTime createdDate;
     private LocalDateTime lastLogin;
     private int failedLoginCount;
+    private boolean notificationsEnabled;
 
     public static UserResponse from(User u) {
         return UserResponse.builder()
@@ -34,6 +35,7 @@ public class UserResponse {
                 .createdDate(u.getCreatedDate())
                 .lastLogin(u.getLastLogin())
                 .failedLoginCount(u.getFailedLoginCount())
+                .notificationsEnabled(u.isNotificationsEnabled())
                 .build();
     }
 }

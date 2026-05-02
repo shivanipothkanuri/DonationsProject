@@ -22,6 +22,8 @@ public interface DonationRepository extends JpaRepository<Donation, Integer> {
     Page<Donation> findByDonor_UserIdAndCampaign_CampaignId(
             Integer donorId, Integer campaignId, Pageable pageable);
 
+        Page<Donation> findByDonor_FullNameContainingIgnoreCase(String donorName, Pageable pageable);
+
     // FR-77: total donations per campaign, optionally filtered by date range
     @Query("SELECT d.campaign.campaignId, d.campaign.campaignTitle, " +
            "SUM(CASE WHEN d.donationAmount IS NOT NULL THEN d.donationAmount ELSE 0 END), " +
@@ -46,4 +48,14 @@ public interface DonationRepository extends JpaRepository<Donation, Integer> {
 
         @Query("SELECT DISTINCT d.donor FROM Donation d WHERE d.campaign.campaignId = :campaignId")
         List<User> findDistinctDonorsByCampaignId(@Param("campaignId") Integer campaignId);
+
+        long countByDonor_UserId(Integer donorId);
+
+        @Query("SELECT COALESCE(SUM(d.donationAmount),0) FROM Donation d WHERE d.donor.userId = :donorId AND d.donationType = org.charityaid.charity_aid.entity.DonationType.MONETARY")
+        BigDecimal totalMonetaryByDonorId(@Param("donorId") Integer donorId);
+
+        @Query("SELECT COUNT(DISTINCT d.campaign.campaignId) FROM Donation d WHERE d.donor.userId = :donorId")
+        long distinctCampaignCountByDonorId(@Param("donorId") Integer donorId);
+
+        List<Donation> findByCampaign_CampaignId(Integer campaignId);
 }

@@ -1,6 +1,9 @@
 package org.charityaid.charity_aid.service;
 
 import java.math.BigDecimal;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
@@ -23,6 +26,7 @@ import org.charityaid.charity_aid.repository.CampaignRepository;
 import org.charityaid.charity_aid.repository.DonationRepository;
 import org.charityaid.charity_aid.repository.InventoryRepository;
 import org.charityaid.charity_aid.repository.UserRepository;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import lombok.RequiredArgsConstructor;
@@ -36,6 +40,7 @@ public class ReportService {
     private final AidRequestRepository aidRequestRepository;
     private final InventoryRepository inventoryRepository;
     private final UserRepository userRepository;
+        private final AuditService auditService;
 
     /**
      * FR-77: Donation summary — totals by campaign, optionally filtered by date
@@ -211,4 +216,19 @@ public class ReportService {
                 .requests(items)
                 .build();
     }
+
+        // FR-81: scheduled auto-export of donation report
+        @Scheduled(cron = "${app.reports.auto-export-cron:0 0 2 * * *}")
+        public void autoExportDonationReport() {
+                try {
+                        byte[] csv = donationSummaryCsv(null, null, null, null);
+                        Path dir = Paths.get("exports", "reports");
+                        Files.createDirectories(dir);
+                        String fileName = "donation-summary-" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss")) + ".csv";
+                        Files.write(dir.resolve(fileName), csv);
+                        auditService.record("REPORT", null, "AUTO_EXPORT", "SYSTEM", "Scheduled report exported: " + fileName);
+                } catch (Exception ex) {
+                        auditService.record("REPORT", null, "AUTO_EXPORT_FAILED", "SYSTEM", "Scheduled export failed: " + ex.getMessage());
+                }
+        }
 }

@@ -64,6 +64,27 @@ public class Campaign {
     @Column(name = "CATEGORY", length = 50)
     private CampaignCategory category;
 
+    // FR-71: Public share slug
+    @Column(name = "SHARE_SLUG", unique = true, length = 120)
+    private String shareSlug;
+
+    // FR-70: Milestone tracking flags
+    @Column(name = "MILESTONE_25_SENT", nullable = false)
+    @Builder.Default
+    private boolean milestone25Sent = false;
+
+    @Column(name = "MILESTONE_50_SENT", nullable = false)
+    @Builder.Default
+    private boolean milestone50Sent = false;
+
+    @Column(name = "MILESTONE_75_SENT", nullable = false)
+    @Builder.Default
+    private boolean milestone75Sent = false;
+
+    @Column(name = "MILESTONE_100_SENT", nullable = false)
+    @Builder.Default
+    private boolean milestone100Sent = false;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "CREATED_BY", nullable = false)
     private User createdBy;
@@ -79,6 +100,13 @@ public class Campaign {
         }
         if (campaignStatus == null) {
             campaignStatus = CampaignStatus.ACTIVE;
+        }
+        if (shareSlug == null || shareSlug.isBlank()) {
+            shareSlug = (campaignTitle != null ? campaignTitle : "campaign")
+                    .toLowerCase()
+                    .replaceAll("[^a-z0-9]+", "-")
+                    .replaceAll("(^-|-$)", "")
+                    + "-" + java.util.UUID.randomUUID().toString().substring(0, 8);
         }
     }
 }

@@ -1,5 +1,10 @@
 package org.charityaid.charity_aid.controller;
 
+import org.charityaid.charity_aid.dto.AidRequestResponse;
+import org.charityaid.charity_aid.dto.ApiResponse;
+import org.charityaid.charity_aid.dto.BeneficiaryRequest;
+import org.charityaid.charity_aid.dto.BeneficiaryResponse;
+import org.charityaid.charity_aid.service.BeneficiaryService;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
@@ -17,11 +22,6 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-
-import org.charityaid.charity_aid.dto.ApiResponse;
-import org.charityaid.charity_aid.dto.BeneficiaryRequest;
-import org.charityaid.charity_aid.dto.BeneficiaryResponse;
-import org.charityaid.charity_aid.service.BeneficiaryService;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -71,5 +71,11 @@ public class BeneficiaryController {
     public ResponseEntity<ApiResponse<BeneficiaryResponse>> deactivateBeneficiary(@PathVariable Integer id) {
         return ResponseEntity.ok(ApiResponse.ok("Beneficiary deactivated",
                 beneficiaryService.deactivateBeneficiary(id)));
+    }
+
+    // FR-45: Beneficiary service history
+    @GetMapping("/{id}/history")
+    public ResponseEntity<ApiResponse<java.util.List<AidRequestResponse>>> getBeneficiaryHistory(@PathVariable Integer id) {
+        return ResponseEntity.ok(ApiResponse.ok(beneficiaryService.getBeneficiaryHistory(id)));
     }
 }

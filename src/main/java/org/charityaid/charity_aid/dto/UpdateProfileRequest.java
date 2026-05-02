@@ -15,4 +15,6 @@ public class UpdateProfileRequest {
 
     @Size(max = 20)
     private String phoneNumber;
+
+    private Boolean notificationsEnabled;
 }
