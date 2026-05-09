@@ -58,4 +58,6 @@ public interface DonationRepository extends JpaRepository<Donation, Integer> {
         long distinctCampaignCountByDonorId(@Param("donorId") Integer donorId);
 
         List<Donation> findByCampaign_CampaignId(Integer campaignId);
+
+        boolean existsByCampaign_CampaignId(Integer campaignId);
 }

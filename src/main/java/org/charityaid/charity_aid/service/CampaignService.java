@@ -114,6 +114,10 @@ public class CampaignService {
     @Transactional
     public void deleteCampaign(Integer id) {
         Campaign campaign = findOrThrow(id);
+        if (donationRepository.existsByCampaign_CampaignId(id)) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Cannot delete campaign with existing donations");
+        }
         campaignRepository.delete(campaign);
         auditService.record("CAMPAIGN", id, "DELETE", null, "Campaign deleted: " + campaign.getCampaignTitle());
     }

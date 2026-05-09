@@ -43,11 +43,18 @@ public class AuditService {
 
     // FR-90: Admin views full audit log (paginated, optionally filtered)
     public Page<AuditLogResponse> getAuditLog(String entityType, String performedBy, Pageable pageable) {
-        if (entityType != null && !entityType.isBlank()) {
+        boolean hasEntityType = entityType != null && !entityType.isBlank();
+        boolean hasPerformedBy = performedBy != null && !performedBy.isBlank();
+
+        if (hasEntityType && hasPerformedBy) {
+            return auditLogRepository.findByEntityTypeAndPerformedBy(entityType.toUpperCase(), performedBy, pageable)
+                    .map(AuditLogResponse::from);
+        }
+        if (hasEntityType) {
             return auditLogRepository.findByEntityType(entityType.toUpperCase(), pageable)
                     .map(AuditLogResponse::from);
         }
-        if (performedBy != null && !performedBy.isBlank()) {
+        if (hasPerformedBy) {
             return auditLogRepository.findByPerformedBy(performedBy, pageable)
                     .map(AuditLogResponse::from);
         }

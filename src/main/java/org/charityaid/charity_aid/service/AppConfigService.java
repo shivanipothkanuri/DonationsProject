@@ -1,23 +1,34 @@
 package org.charityaid.charity_aid.service;
 
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+import org.charityaid.charity_aid.entity.SystemConfigEntry;
 import org.charityaid.charity_aid.entity.UserRole;
+import org.charityaid.charity_aid.repository.SystemConfigRepository;
 import org.springframework.stereotype.Service;
 
+import jakarta.annotation.PostConstruct;
+import lombok.RequiredArgsConstructor;
+
 @Service
+@RequiredArgsConstructor
+@SuppressWarnings("null")
 public class AppConfigService {
 
-    private final ConcurrentHashMap<String, String> systemConfig = new ConcurrentHashMap<>();
+    private static final Map<String, String> DEFAULT_CONFIG = Map.of(
+            "rateLimit.perMinute", "120",
+            "reports.autoExport.enabled", "true",
+            "reports.autoExport.cron", "0 0 2 * * *");
+
+    private final SystemConfigRepository systemConfigRepository;
     private final ConcurrentHashMap<String, List<String>> rolePermissions = new ConcurrentHashMap<>();
 
-    public AppConfigService() {
-        systemConfig.put("rateLimit.perMinute", "120");
-        systemConfig.put("reports.autoExport.enabled", "true");
-        systemConfig.put("reports.autoExport.cron", "0 0 2 * * *");
-
+    @PostConstruct
+    public void init() {
+        seedDefaultSystemConfig();
         rolePermissions.put(UserRole.DONOR.name(), List.of("DONATE", "VIEW_OWN_DONATIONS"));
         rolePermissions.put(UserRole.STAFF.name(), List.of("MANAGE_BENEFICIARIES", "MANAGE_INVENTORY", "MANAGE_AID_REQUESTS"));
         rolePermissions.put(UserRole.CASE_MANAGER.name(), List.of("REVIEW_AID_REQUESTS", "ESCALATE_AID_REQUESTS"));
@@ -26,7 +37,10 @@ public class AppConfigService {
     }
 
     public Map<String, String> getSystemConfig() {
-        return Map.copyOf(systemConfig);
+        Map<String, String> merged = new LinkedHashMap<>(DEFAULT_CONFIG);
+        systemConfigRepository.findAll()
+                .forEach(entry -> merged.put(entry.getConfigKey(), entry.getConfigValue()));
+        return Map.copyOf(merged);
     }
 
     public Map<String, List<String>> getRolePermissions() {
@@ -35,9 +49,16 @@ public class AppConfigService {
 
     public Map<String, String> updateSystemConfig(Map<String, String> updates) {
         if (updates != null) {
-            systemConfig.putAll(updates);
+            updates.forEach((key, value) -> {
+                if (key != null && !key.isBlank() && value != null) {
+                    systemConfigRepository.save(SystemConfigEntry.builder()
+                            .configKey(key)
+                            .configValue(value)
+                            .build());
+                }
+            });
         }
-        return Map.copyOf(systemConfig);
+        return getSystemConfig();
     }
 
     public List<String> updateRolePermissions(String role, List<String> permissions) {
@@ -47,9 +68,20 @@ public class AppConfigService {
 
     public int getRateLimitPerMinute() {
         try {
-            return Integer.parseInt(systemConfig.getOrDefault("rateLimit.perMinute", "120"));
+            return Integer.parseInt(getSystemConfig().getOrDefault("rateLimit.perMinute", "120"));
         } catch (NumberFormatException ex) {
             return 120;
         }
+    }
+
+    private void seedDefaultSystemConfig() {
+        DEFAULT_CONFIG.forEach((key, value) -> {
+            if (!systemConfigRepository.existsById(key)) {
+                systemConfigRepository.save(SystemConfigEntry.builder()
+                        .configKey(key)
+                        .configValue(value)
+                        .build());
+            }
+        });
     }
 }

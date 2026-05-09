@@ -16,6 +16,8 @@ public interface AuditLogRepository extends JpaRepository<AuditLog, Integer> {
 
     Page<AuditLog> findByPerformedBy(String performedBy, Pageable pageable);
 
+       Page<AuditLog> findByEntityTypeAndPerformedBy(String entityType, String performedBy, Pageable pageable);
+
     @Query("SELECT a FROM AuditLog a " +
            "WHERE (:from IS NULL OR a.performedAt >= :from) " +
            "AND (:to IS NULL OR a.performedAt <= :to) " +
